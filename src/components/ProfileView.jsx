@@ -3,10 +3,6 @@ import {
   Flame,
   Zap,
   Trophy,
-  Share2,
-  Smartphone,
-  Monitor,
-  RefreshCw,
   Sparkles,
   Heart,
   Gem,
@@ -26,13 +22,9 @@ export default function ProfileView({
   streakFreezeActive,
   setStreakFreezeActive,
   completedLessonsCount,
-  onResetProgress,
-  isPhoneMockup,
-  setIsPhoneMockup,
 }) {
   const tgUser = telegramService.getUser();
   const isInsideTelegram = telegramService.isInsideTelegram();
-  const platform = telegramService.getPlatform();
 
   const handleBuyHearts = () => {
     if (gems < 50 || hearts >= 5) return;
@@ -273,52 +265,6 @@ export default function ProfileView({
               <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-2">{ach.desc}</p>
             </div>
           ))}
-        </div>
-      </div>
-
-      {/* Настройки и Telegram */}
-      <div className="bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-3xl p-5 space-y-3 text-xs">
-        <h3 className="font-duo font-bold text-sm text-slate-900 dark:text-white">
-          Telegram и Экран
-        </h3>
-
-        <button
-          type="button"
-          onClick={() =>
-            telegramService.shareApp(
-              'Учу лаосские слова и произношение по транскрипции в LaoLingo! 🇱🇦🐘'
-            )
-          }
-          className="w-full py-3 px-4 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-duo font-bold text-xs flex items-center justify-center gap-2 btn-3d border-sky-700 cursor-pointer"
-        >
-          <Share2 className="w-4 h-4" /> Поделиться в Telegram
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setIsPhoneMockup(!isPhoneMockup)}
-          className="w-full py-2.5 px-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-duo font-bold text-xs flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-100"
-        >
-          {isPhoneMockup ? (
-            <>
-              <Monitor className="w-4 h-4" /> Развернуть на весь экран ноутбука
-            </>
-          ) : (
-            <>
-              <Smartphone className="w-4 h-4" /> Показать в рамке смартфона
-            </>
-          )}
-        </button>
-
-        <div className="pt-2 flex items-center justify-between text-[11px] text-slate-400">
-          <span>Платформа: {platform}</span>
-          <button
-            type="button"
-            onClick={onResetProgress}
-            className="text-rose-500 hover:underline flex items-center gap-1 cursor-pointer"
-          >
-            <RefreshCw className="w-3 h-3" /> Сбросить прогресс
-          </button>
         </div>
       </div>
     </div>
