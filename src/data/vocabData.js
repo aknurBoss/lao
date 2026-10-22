@@ -1,13 +1,13 @@
 // Bilingual (RU & EN) Lao Vocabulary & Phrase Database (100% Transcription-First)
 
 export const VOCAB_CATEGORIES = [
-  { id: 'greetings', name: 'Приветствия и вежливость', nameEn: 'Greetings & Politeness', icon: '👋', count: 10 },
-  { id: 'basics', name: 'Местоимения и база', nameEn: 'Pronouns & Basics', icon: '🗣️', count: 10 },
-  { id: 'food', name: 'Еда, кафе и рестораны', nameEn: 'Food, Cafe & Dining', icon: '🍜', count: 12 },
-  { id: 'numbers', name: 'Числа и деньги (Кипы)', nameEn: 'Numbers & Kip Money', icon: '🔢', count: 12 },
-  { id: 'shopping', name: 'Рынок, покупки и торг', nameEn: 'Market & Bargaining', icon: '🛍️', count: 9 },
-  { id: 'transport', name: 'Такси, тук-тук и дорога', nameEn: 'Taxi, Tuk-Tuk & Directions', icon: '🛺', count: 9 },
-  { id: 'daily', name: 'На каждый день и помощь', nameEn: 'Daily Life & Help', icon: '✨', count: 10 },
+  { id: 'greetings', name: 'Приветствия и вежливость', nameEn: 'Greetings & Politeness', enName: 'Greetings & Politeness', icon: '👋', count: 10 },
+  { id: 'basics', name: 'Местоимения и база', nameEn: 'Pronouns & Basics', enName: 'Pronouns & Basics', icon: '🗣️', count: 10 },
+  { id: 'food', name: 'Еда, кафе и рестораны', nameEn: 'Food, Cafe & Dining', enName: 'Food, Cafe & Dining', icon: '🍜', count: 12 },
+  { id: 'numbers', name: 'Числа и деньги (Кипы)', nameEn: 'Numbers & Kip Money', enName: 'Numbers & Kip Money', icon: '🔢', count: 12 },
+  { id: 'shopping', name: 'Рынок, покупки и торг', nameEn: 'Market & Bargaining', enName: 'Market & Bargaining', icon: '🛍️', count: 9 },
+  { id: 'transport', name: 'Такси, тук-тук и дорога', nameEn: 'Taxi, Tuk-Tuk & Directions', enName: 'Taxi, Tuk-Tuk & Directions', icon: '🛺', count: 9 },
+  { id: 'daily', name: 'На каждый день и помощь', nameEn: 'Daily Life & Help', enName: 'Daily Life & Help', icon: '✨', count: 10 },
 ];
 
 export const VOCAB_WORDS = [
