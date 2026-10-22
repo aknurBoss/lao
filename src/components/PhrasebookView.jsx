@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { VOCAB_WORDS, VOCAB_CATEGORIES } from '../data/vocabData';
+import { VOCAB_WORDS, VOCAB_CATEGORIES, getWordDisplay } from '../data/vocabData';
+import { UI_TEXT } from '../data/i18n';
 import { audioEngine } from '../services/audioService';
 import { telegramService } from '../services/telegramService';
 import {
@@ -10,16 +11,15 @@ import {
   Turtle,
 } from 'lucide-react';
 
-export default function PhrasebookView({ onAwardXP }) {
+export default function PhrasebookView({
+  onAwardXP,
+  lang = 'ru',
+  bookmarkedIds = [],
+  onUpdateBookmarkedIds,
+}) {
+  const t = UI_TEXT[lang]?.dictionary || UI_TEXT.ru.dictionary;
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
-  const [bookmarkedIds, setBookmarkedIds] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('lao_saved_phrases') || '[]');
-    } catch {
-      return [];
-    }
-  });
 
   const toggleBookmark = (id) => {
     telegramService.hapticImpact('light');
@@ -30,8 +30,7 @@ export default function PhrasebookView({ onAwardXP }) {
       updated = [...bookmarkedIds, id];
       if (onAwardXP) onAwardXP(2);
     }
-    setBookmarkedIds(updated);
-    localStorage.setItem('lao_saved_phrases', JSON.stringify(updated));
+    if (onUpdateBookmarkedIds) onUpdateBookmarkedIds(updated);
   };
 
   const filteredPhrases = VOCAB_WORDS.filter((p) => {
@@ -48,8 +47,9 @@ export default function PhrasebookView({ onAwardXP }) {
       p.ruTrans.toLowerCase().includes(query) ||
       p.latTrans.toLowerCase().includes(query) ||
       p.ruMeaning.toLowerCase().includes(query) ||
+      (p.enMeaning && p.enMeaning.toLowerCase().includes(query)) ||
       (p.literal && p.literal.toLowerCase().includes(query)) ||
-      (p.pronunciationHint && p.pronunciationHint.toLowerCase().includes(query));
+      (p.enLiteral && p.enLiteral.toLowerCase().includes(query));
 
     return matchesCategory && matchesQuery;
   });
@@ -59,13 +59,13 @@ export default function PhrasebookView({ onAwardXP }) {
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-sky-500 to-blue-600 text-white rounded-3xl p-5 sm:p-6 shadow-md">
         <span className="text-xs font-bold uppercase tracking-wider text-sky-100 font-duo">
-          Словарь и Разговорник с озвучкой
+          {t.headerTag}
         </span>
         <h1 className="text-2xl sm:text-3xl font-black font-duo mt-0.5">
-          Все нужные слова по транскрипции
+          {t.headerTitle}
         </h1>
         <p className="mt-1 text-sky-100 text-xs sm:text-sm">
-          Нажимайте 🔊 для обычного произношения или 🐢 чтобы услышать слово медленно по слогам!
+          {t.headerSub}
         </p>
       </div>
 
@@ -77,7 +77,7 @@ export default function PhrasebookView({ onAwardXP }) {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Поиск по-русски или по транскрипции (привет, спасибо, вода, скидка, сабайди...)"
+            placeholder={t.searchPlaceholder}
             className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
           />
         </div>
@@ -92,7 +92,7 @@ export default function PhrasebookView({ onAwardXP }) {
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
             }`}
           >
-            Все слова ({VOCAB_WORDS.length})
+            {t.allWords} ({VOCAB_WORDS.length})
           </button>
 
           <button
@@ -104,7 +104,7 @@ export default function PhrasebookView({ onAwardXP }) {
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
             }`}
           >
-            ⭐ Избранное ({bookmarkedIds.length})
+            {t.savedWords} ({bookmarkedIds.length})
           </button>
 
           {VOCAB_CATEGORIES.map((cat) => (
@@ -118,7 +118,7 @@ export default function PhrasebookView({ onAwardXP }) {
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
               }`}
             >
-              {cat.icon} {cat.name}
+              {cat.icon} {lang === 'en' ? cat.enName : cat.name}
             </button>
           ))}
         </div>
@@ -126,14 +126,15 @@ export default function PhrasebookView({ onAwardXP }) {
 
       {/* Words List */}
       <div className="space-y-3">
-        {filteredPhrases.map((word) => {
+        {filteredPhrases.map((rawWord) => {
+          const word = getWordDisplay(rawWord, lang);
           const isSaved = bookmarkedIds.includes(word.id);
           return (
             <div
               key={word.id}
               onClick={() => {
                 telegramService.hapticImpact('light');
-                audioEngine.speakText(word, 0.85);
+                audioEngine.speakText(rawWord, 0.85);
               }}
               className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 hover:border-sky-400 rounded-3xl p-4 sm:p-5 shadow-xs transition cursor-pointer"
             >
@@ -141,18 +142,18 @@ export default function PhrasebookView({ onAwardXP }) {
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400">
-                      {word.ruTrans}
+                      {word.displayTrans}
                     </h3>
                     <span className="text-xs sm:text-sm font-mono font-semibold text-slate-400">
-                      [{word.latTrans}]
+                      [{word.displayAltTrans}]
                     </span>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
-                      {word.tone}
+                      {word.displayTone}
                     </span>
                   </div>
 
                   <p className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mt-1">
-                    {word.ruMeaning}
+                    {word.displayMeaning}
                   </p>
                 </div>
 
@@ -165,10 +166,10 @@ export default function PhrasebookView({ onAwardXP }) {
                     type="button"
                     onClick={() => {
                       telegramService.hapticImpact('light');
-                      audioEngine.speakText(word, 0.55);
+                      audioEngine.speakText(rawWord, 0.55);
                     }}
                     className="p-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-300 transition cursor-pointer"
-                    title="Медленно по слогам"
+                    title={t.slowTitle}
                   >
                     <Turtle className="w-4 h-4" />
                   </button>
@@ -177,10 +178,10 @@ export default function PhrasebookView({ onAwardXP }) {
                     type="button"
                     onClick={() => {
                       telegramService.hapticImpact('light');
-                      audioEngine.speakText(word, 0.85);
+                      audioEngine.speakText(rawWord, 0.85);
                     }}
                     className="p-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white shadow-xs transition cursor-pointer"
-                    title="Прослушать произношение"
+                    title={t.listenTitle}
                   >
                     <Volume2 className="w-4 h-4" />
                   </button>
@@ -193,7 +194,7 @@ export default function PhrasebookView({ onAwardXP }) {
                         ? 'text-amber-500 bg-amber-50 dark:bg-amber-950/40'
                         : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
-                    title={isSaved ? 'Убрать из избранного' : 'В избранное'}
+                    title={isSaved ? t.unbookmarkTitle : t.bookmarkTitle}
                   >
                     {isSaved ? (
                       <BookmarkCheck className="w-4 h-4 fill-current" />
@@ -206,14 +207,14 @@ export default function PhrasebookView({ onAwardXP }) {
 
               {/* Pronunciation & Literal Breakdown */}
               <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 space-y-1 text-xs text-slate-600 dark:text-slate-400">
-                {word.pronunciationHint && (
+                {word.displayHint && (
                   <p>
-                    💡 <strong>Произношение:</strong> {word.pronunciationHint}
+                    💡 <strong>{t.pronunciationLabel}</strong> {word.displayHint}
                   </p>
                 )}
-                {word.literal && (
+                {word.displayLiteral && (
                   <p className="text-slate-400">
-                    🧩 <strong>Дословно:</strong> {word.literal}
+                    🧩 <strong>{t.literalLabel}</strong> {word.displayLiteral}
                   </p>
                 )}
               </div>
@@ -223,7 +224,7 @@ export default function PhrasebookView({ onAwardXP }) {
 
         {filteredPhrases.length === 0 && (
           <div className="text-center py-10 bg-white dark:bg-slate-900 rounded-3xl border-2 border-slate-200 dark:border-slate-800 text-slate-400 text-sm">
-            По запросу «{searchQuery}» ничего не найдено.
+            {t.emptySearch(searchQuery)}
           </div>
         )}
       </div>

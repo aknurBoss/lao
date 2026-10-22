@@ -95,11 +95,24 @@ class AudioEngine {
     utterance.rate = rate;
     utterance.pitch = 1.0;
 
+    const preferredLang =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('laolingo_lang') || 'ru'
+        : 'ru';
+
     if (this.laoOrThaiVoice && (vocabEntry?.lao || /[ກ-ໝ]/.test(String(itemOrText)))) {
       // Device has native Lao/Thai voice
       utterance.text = vocabEntry ? vocabEntry.lao : String(itemOrText);
       utterance.voice = this.laoOrThaiVoice;
       utterance.lang = this.laoOrThaiVoice.lang;
+    } else if (preferredLang === 'en' && this.enVoice) {
+      // Use English voice with Latin phonetic transcription when UI is in English
+      const textToRead = vocabEntry
+        ? vocabEntry.ttsPhoneticEn
+        : this.cleanPhonetic(String(itemOrText));
+      utterance.text = textToRead;
+      utterance.voice = this.enVoice;
+      utterance.lang = this.enVoice.lang;
     } else if (this.ruVoice) {
       // Use Russian voice with phonetic transcription
       const textToRead = vocabEntry

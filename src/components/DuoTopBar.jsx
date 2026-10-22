@@ -1,6 +1,7 @@
 import React from 'react';
-import { Flame, Gem, Heart, Smartphone, Monitor } from 'lucide-react';
+import { Flame, Gem, Heart, Globe } from 'lucide-react';
 import { telegramService } from '../services/telegramService';
+import { UI_TEXT } from '../data/i18n';
 
 export default function DuoTopBar({
   hearts,
@@ -8,9 +9,18 @@ export default function DuoTopBar({
   streak,
   streakFreezeActive,
   onOpenShop,
-  isPhoneMockup,
-  setIsPhoneMockup,
+  lang = 'ru',
+  setLang,
 }) {
+  const t = UI_TEXT[lang] || UI_TEXT.ru;
+
+  const toggleLanguage = () => {
+    telegramService.hapticSelection();
+    if (setLang) {
+      setLang(lang === 'ru' ? 'en' : 'ru');
+    }
+  };
+
   return (
     <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b-2 border-slate-200 dark:border-slate-800 pt-safe px-4 py-2 sm:py-2.5">
       <div className="max-w-2xl mx-auto flex items-center justify-between">
@@ -24,24 +34,35 @@ export default function DuoTopBar({
           </span>
         </div>
 
-        {/* Gamified Top Badges: Streak, Gems, Hearts */}
-        <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm font-duo font-bold">
+        {/* Gamified Top Badges: Language, Streak, Gems, Hearts */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 text-xs sm:text-sm font-duo font-bold">
+          {/* Language Switcher RU / EN */}
+          <button
+            type="button"
+            onClick={toggleLanguage}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-300 transition"
+            title={lang === 'ru' ? 'Switch to English' : 'Переключить на Русский'}
+          >
+            <Globe className="w-3.5 h-3.5 text-emerald-500" />
+            <span className="uppercase font-black">{lang === 'ru' ? 'RU' : 'EN'}</span>
+          </button>
+
           {/* Streak Flame */}
           <div
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60"
-            title="Daily Learning Streak"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60"
+            title={t.topBar.streakTitle}
           >
             <Flame className="w-4 h-4 fill-amber-500 text-amber-500 animate-pulse" />
             <span>{streak}</span>
-            {streakFreezeActive && <span title="Streak Freeze Active">🧊</span>}
+            {streakFreezeActive && <span title={t.topBar.freezeActive}>🧊</span>}
           </div>
 
           {/* Gems */}
           <button
             type="button"
             onClick={onOpenShop}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800/60 cursor-pointer hover:bg-sky-100 transition"
-            title="Gems Balance (Click to open Shop)"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-2xl bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800/60 cursor-pointer hover:bg-sky-100 transition"
+            title={t.topBar.gemsTitle}
           >
             <Gem className="w-4 h-4 fill-sky-500 text-sky-500" />
             <span>{gems}</span>
@@ -51,21 +72,11 @@ export default function DuoTopBar({
           <button
             type="button"
             onClick={onOpenShop}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60 cursor-pointer hover:bg-rose-100 transition"
-            title="Remaining Hearts (Click to refill)"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60 cursor-pointer hover:bg-rose-100 transition"
+            title={t.topBar.heartsTitle}
           >
             <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
             <span>{hearts}</span>
-          </button>
-
-          {/* Laptop view switch */}
-          <button
-            type="button"
-            onClick={() => setIsPhoneMockup(!isPhoneMockup)}
-            className="hidden md:flex p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-            title={isPhoneMockup ? 'Expand to Desktop Layout' : 'Simulate Phone Frame'}
-          >
-            {isPhoneMockup ? <Monitor className="w-4 h-4" /> : <Smartphone className="w-4 h-4" />}
           </button>
         </div>
       </div>

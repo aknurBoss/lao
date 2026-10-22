@@ -1,19 +1,22 @@
 import React from 'react';
 import { Map, Layers, Volume2, Trophy, User } from 'lucide-react';
 import { telegramService } from '../services/telegramService';
+import { UI_TEXT } from '../data/i18n';
 
-export default function DuoNavBar({ activeTab, setActiveTab }) {
+export default function DuoNavBar({ activeTab, setActiveTab, lang = 'ru' }) {
+  const t = UI_TEXT[lang]?.nav || UI_TEXT.ru.nav;
+
   const tabs = [
-    { id: 'path', label: 'Уроки', subLabel: 'Курс', icon: Map },
-    { id: 'cards', label: 'Карточки', subLabel: 'Учить слова', icon: Layers },
-    { id: 'dictionary', label: 'Словарь', subLabel: 'Озвучка', icon: Volume2 },
-    { id: 'leaderboard', label: 'Лига', subLabel: 'Рейтинг', icon: Trophy },
-    { id: 'profile', label: 'Профиль', subLabel: 'Награды', icon: User },
+    { id: 'path', label: t.path, subLabel: t.pathSub, icon: Map },
+    { id: 'cards', label: t.cards, subLabel: t.cardsSub, icon: Layers },
+    { id: 'dictionary', label: t.dictionary, subLabel: t.dictionarySub, icon: Volume2 },
+    { id: 'leaderboard', label: t.leaderboard, subLabel: t.leaderboardSub, icon: Trophy },
+    { id: 'profile', label: t.profile, subLabel: t.profileSub, icon: User },
   ];
 
   return (
     <>
-      {/* 1. Нижняя панель на телефоне и в Telegram Mobile */}
+      {/* 1. Bottom bar on Mobile & Telegram Mobile */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-t-2 border-slate-200 dark:border-slate-800 pb-safe px-2 pt-1.5">
         <div className="flex items-center justify-around max-w-md mx-auto">
           {tabs.map((tab) => {
@@ -51,7 +54,7 @@ export default function DuoNavBar({ activeTab, setActiveTab }) {
         </div>
       </nav>
 
-      {/* 2. Боковая панель на ноутбуке / ПК */}
+      {/* 2. Sidebar on Laptop / Desktop */}
       <aside className="hidden md:flex flex-col justify-between w-64 border-r-2 border-slate-200 dark:border-slate-800 p-5 bg-white dark:bg-slate-950 shrink-0 min-h-screen sticky top-0">
         <div className="space-y-6">
           <div className="flex items-center gap-3 select-none">
@@ -63,7 +66,7 @@ export default function DuoNavBar({ activeTab, setActiveTab }) {
                 Lao<span className="text-emerald-500">Lingo</span>
               </span>
               <span className="text-[11px] text-slate-400 block -mt-0.5 font-semibold">
-                Лаосский по транскрипции
+                {t.brandSub}
               </span>
             </div>
           </div>
@@ -97,9 +100,9 @@ export default function DuoNavBar({ activeTab, setActiveTab }) {
 
         <div className="pt-4 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400 space-y-1">
           <p className="font-bold text-slate-600 dark:text-slate-300">
-            Только живая речь и транскрипция
+            {t.footerTitle}
           </p>
-          <p>Работает в Telegram, на телефоне и ноутбуке.</p>
+          <p>{t.footerSub}</p>
         </div>
       </aside>
     </>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import DuoTopBar from './components/DuoTopBar';
 import DuoNavBar from './components/DuoNavBar';
 import DuoPath from './components/DuoPath';
@@ -8,15 +8,30 @@ import PhrasebookView from './components/PhrasebookView';
 import LeaderboardView from './components/LeaderboardView';
 import ProfileView from './components/ProfileView';
 import { telegramService } from './services/telegramService';
+import { syncService, mergeStates } from './services/syncService';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('path'); // 'path' | 'cards' | 'dictionary' | 'leaderboard' | 'profile'
   const [activeLesson, setActiveLesson] = useState(null);
-  const [isPhoneMockup, setIsPhoneMockup] = useState(false);
+  const [syncId, setSyncId] = useState(() => syncService.getSyncId());
 
+  // Bilingual support: 'ru' | 'en'
+  const [lang, setLang] = useState(() => {
+    try {
+      const saved = localStorage.getItem('laolingo_lang');
+      if (saved === 'en' || saved === 'ru') return saved;
+      const tgUser = telegramService.getUser();
+      if (tgUser?.languageCode && tgUser.languageCode.startsWith('en')) return 'en';
+      return 'ru';
+    } catch {
+      return 'ru';
+    }
+  });
+
+  // Real user state (0 demo data)
   const [hearts, setHearts] = useState(() => {
     try {
-      return parseInt(localStorage.getItem('lao_user_hearts') || '5', 10);
+      return parseInt(localStorage.getItem('laolingo_hearts') || '5', 10);
     } catch {
       return 5;
     }
@@ -24,23 +39,23 @@ export default function App() {
 
   const [gems, setGems] = useState(() => {
     try {
-      return parseInt(localStorage.getItem('lao_user_gems') || '150', 10);
+      return parseInt(localStorage.getItem('laolingo_gems') || '100', 10);
     } catch {
-      return 150;
+      return 100;
     }
   });
 
   const [streak, setStreak] = useState(() => {
     try {
-      return parseInt(localStorage.getItem('lao_user_streak') || '2', 10);
+      return parseInt(localStorage.getItem('laolingo_streak') || '0', 10);
     } catch {
-      return 2;
+      return 0;
     }
   });
 
   const [streakFreezeActive, setStreakFreezeActive] = useState(() => {
     try {
-      return localStorage.getItem('lao_streak_freeze') === 'true';
+      return localStorage.getItem('laolingo_streak_freeze') === 'true';
     } catch {
       return false;
     }
@@ -48,15 +63,15 @@ export default function App() {
 
   const [xp, setXp] = useState(() => {
     try {
-      return parseInt(localStorage.getItem('lao_user_xp') || '45', 10);
+      return parseInt(localStorage.getItem('laolingo_xp') || '0', 10);
     } catch {
-      return 45;
+      return 0;
     }
   });
 
   const [completedLessons, setCompletedLessons] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('lao_completed_lessons') || '[]');
+      return JSON.parse(localStorage.getItem('laolingo_completed_lessons') || '[]');
     } catch {
       return [];
     }
@@ -64,39 +79,138 @@ export default function App() {
 
   const [unlockedChests, setUnlockedChests] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('lao_unlocked_chests') || '[]');
+      return JSON.parse(localStorage.getItem('laolingo_unlocked_chests') || '[]');
     } catch {
       return [];
     }
   });
 
-  useEffect(() => {
-    localStorage.setItem('lao_user_hearts', hearts.toString());
-  }, [hearts]);
+  const [learnedWords, setLearnedWords] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('laolingo_learned_words') || '[]');
+    } catch {
+      return [];
+    }
+  });
 
-  useEffect(() => {
-    localStorage.setItem('lao_user_gems', gems.toString());
-  }, [gems]);
+  const [savedPhrases, setSavedPhrases] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('laolingo_saved_phrases') || '[]');
+    } catch {
+      return [];
+    }
+  });
 
-  useEffect(() => {
-    localStorage.setItem('lao_user_streak', streak.toString());
-  }, [streak]);
+  const isInitialMount = useRef(true);
 
-  useEffect(() => {
-    localStorage.setItem('lao_streak_freeze', streakFreezeActive.toString());
-  }, [streakFreezeActive]);
+  const applyMergedState = (merged) => {
+    if (!merged) return;
+    if (typeof merged.xp === 'number') setXp(merged.xp);
+    if (typeof merged.streak === 'number') setStreak(merged.streak);
+    if (typeof merged.hearts === 'number') setHearts(merged.hearts);
+    if (typeof merged.gems === 'number') setGems(merged.gems);
+    if (typeof merged.streakFreezeActive === 'boolean') {
+      setStreakFreezeActive(merged.streakFreezeActive);
+    }
+    if (Array.isArray(merged.completedLessons)) {
+      setCompletedLessons(merged.completedLessons);
+    }
+    if (Array.isArray(merged.unlockedChests)) {
+      setUnlockedChests(merged.unlockedChests);
+    }
+    if (Array.isArray(merged.learnedWords)) {
+      setLearnedWords(merged.learnedWords);
+    }
+    if (Array.isArray(merged.savedPhrases)) {
+      setSavedPhrases(merged.savedPhrases);
+    }
+    if (merged.lang === 'en' || merged.lang === 'ru') {
+      setLang(merged.lang);
+    }
+  };
 
+  // Initial sync on load (URL Magic Link + Telegram CloudStorage + Cloud KV)
   useEffect(() => {
-    localStorage.setItem('lao_user_xp', xp.toString());
-  }, [xp]);
+    const currentSnapshot = {
+      xp,
+      streak,
+      hearts,
+      gems,
+      streakFreezeActive,
+      completedLessons,
+      unlockedChests,
+      learnedWords,
+      savedPhrases,
+      lang,
+      updatedAt: Number(localStorage.getItem('laolingo_updated_at') || 0),
+    };
 
-  useEffect(() => {
-    localStorage.setItem('lao_completed_lessons', JSON.stringify(completedLessons));
-  }, [completedLessons]);
+    const urlState = syncService.consumeUrlSyncData();
+    setSyncId(syncService.getSyncId());
 
+    const baseState = urlState ? mergeStates(currentSnapshot, urlState) : currentSnapshot;
+    if (urlState) {
+      applyMergedState(baseState);
+    }
+
+    syncService.syncAll(baseState).then((remoteMerged) => {
+      if (remoteMerged) {
+        applyMergedState(remoteMerged);
+      }
+      isInitialMount.current = false;
+    });
+  }, []);
+
+  // Save to localStorage and sync to Cloud whenever state updates
   useEffect(() => {
-    localStorage.setItem('lao_unlocked_chests', JSON.stringify(unlockedChests));
-  }, [unlockedChests]);
+    localStorage.setItem('laolingo_lang', lang);
+    localStorage.setItem('laolingo_hearts', hearts.toString());
+    localStorage.setItem('laolingo_gems', gems.toString());
+    localStorage.setItem('laolingo_streak', streak.toString());
+    localStorage.setItem('laolingo_streak_freeze', streakFreezeActive.toString());
+    localStorage.setItem('laolingo_xp', xp.toString());
+    localStorage.setItem('laolingo_completed_lessons', JSON.stringify(completedLessons));
+    localStorage.setItem('laolingo_unlocked_chests', JSON.stringify(unlockedChests));
+    localStorage.setItem('laolingo_learned_words', JSON.stringify(learnedWords));
+    localStorage.setItem('laolingo_saved_phrases', JSON.stringify(savedPhrases));
+
+    const now = Date.now();
+    localStorage.setItem('laolingo_updated_at', now.toString());
+
+    if (isInitialMount.current) return;
+
+    const payload = {
+      xp,
+      streak,
+      hearts,
+      gems,
+      streakFreezeActive,
+      completedLessons,
+      unlockedChests,
+      learnedWords,
+      savedPhrases,
+      lang,
+      updatedAt: now,
+    };
+
+    const timer = setTimeout(() => {
+      syncService.saveToTelegramCloud(payload);
+      syncService.pushToCloudKV(payload);
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [
+    lang,
+    hearts,
+    gems,
+    streak,
+    streakFreezeActive,
+    xp,
+    completedLessons,
+    unlockedChests,
+    learnedWords,
+    savedPhrases,
+  ]);
 
   useEffect(() => {
     if (activeLesson) {
@@ -106,12 +220,18 @@ export default function App() {
     }
   }, [activeLesson]);
 
+  const handleAwardXP = (amount) => {
+    setXp((prev) => prev + amount);
+    setStreak((prev) => (prev === 0 ? 1 : prev));
+  };
+
   const handleFinishLesson = (lesson, isPerfect) => {
     const gainedXp = lesson.xpReward + (isPerfect ? 5 : 0);
     const gainedGems = lesson.gemReward;
 
     setXp((prev) => prev + gainedXp);
     setGems((prev) => prev + gainedGems);
+    setStreak((prev) => (prev === 0 ? 1 : prev));
 
     if (!completedLessons.includes(lesson.id)) {
       setCompletedLessons((prev) => [...prev, lesson.id]);
@@ -125,109 +245,132 @@ export default function App() {
     }
   };
 
-  const handleResetProgress = () => {
-    if (window.confirm('Сбросить весь прогресс, выученные слова и опыт?')) {
-      localStorage.clear();
-      setHearts(5);
-      setGems(150);
-      setStreak(1);
-      setStreakFreezeActive(false);
-      setXp(0);
-      setCompletedLessons([]);
-      setUnlockedChests([]);
-      window.location.reload();
-    }
+  const handleSyncWithCode = async (targetCode) => {
+    const currentSnapshot = {
+      xp,
+      streak,
+      hearts,
+      gems,
+      streakFreezeActive,
+      completedLessons,
+      unlockedChests,
+      learnedWords,
+      savedPhrases,
+      lang,
+      updatedAt: Date.now(),
+    };
+    const merged = await syncService.syncAll(currentSnapshot, targetCode);
+    setSyncId(syncService.getSyncId());
+    applyMergedState(merged);
   };
 
-  const renderContent = () => (
-    <div className="flex-1 flex flex-col min-h-screen">
-      <DuoTopBar
-        hearts={hearts}
-        gems={gems}
-        streak={streak}
-        streakFreezeActive={streakFreezeActive}
-        onOpenShop={() => setActiveTab('profile')}
-        isPhoneMockup={isPhoneMockup}
-        setIsPhoneMockup={setIsPhoneMockup}
-      />
-
-      <main className="flex-1 pb-24 md:pb-12">
-        {activeTab === 'path' && (
-          <DuoPath
-            completedLessons={completedLessons}
-            onStartLesson={(lesson) => setActiveLesson(lesson)}
-            unlockedChests={unlockedChests}
-            onUnlockChest={handleUnlockChest}
-          />
-        )}
-
-        {activeTab === 'cards' && (
-          <FlashcardsTrainerView
-            onAwardXP={(amount) => {
-              setXp((prev) => prev + amount);
-              if (hearts < 5) setHearts((prev) => Math.min(5, prev + 1));
-            }}
-          />
-        )}
-
-        {activeTab === 'dictionary' && (
-          <PhrasebookView onAwardXP={(amount) => setXp((prev) => prev + amount)} />
-        )}
-
-        {activeTab === 'leaderboard' && <LeaderboardView userXp={xp} />}
-
-        {activeTab === 'profile' && (
-          <ProfileView
-            xp={xp}
-            streak={streak}
-            hearts={hearts}
-            setHearts={setHearts}
-            gems={gems}
-            setGems={setGems}
-            streakFreezeActive={streakFreezeActive}
-            setStreakFreezeActive={setStreakFreezeActive}
-            completedLessonsCount={completedLessons.length}
-            onResetProgress={handleResetProgress}
-            isPhoneMockup={isPhoneMockup}
-            setIsPhoneMockup={setIsPhoneMockup}
-          />
-        )}
-      </main>
-
-      {activeLesson && (
-        <LessonModal
-          lesson={activeLesson}
-          hearts={hearts}
-          setHearts={setHearts}
-          gems={gems}
-          setGems={setGems}
-          onFinishLesson={handleFinishLesson}
-          onClose={() => setActiveLesson(null)}
-        />
-      )}
-    </div>
-  );
+  const currentStateForLink = {
+    xp,
+    streak,
+    hearts,
+    gems,
+    streakFreezeActive,
+    completedLessons,
+    unlockedChests,
+    learnedWords,
+    savedPhrases,
+    lang,
+    updatedAt: Date.now(),
+  };
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
-      {isPhoneMockup ? (
-        <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-slate-900">
-          <div className="w-full max-w-[420px] h-[860px] max-h-[92vh] bg-white dark:bg-slate-950 rounded-[44px] shadow-2xl border-8 border-slate-800 flex flex-col overflow-hidden relative">
-            <div className="absolute top-2 left-1/2 -translate-x-1/2 w-28 h-4 bg-slate-800 rounded-full z-50"></div>
-            <div className="flex-1 flex flex-col overflow-y-auto">
-              {renderContent()}
-              <DuoNavBar activeTab={activeTab} setActiveTab={setActiveTab} />
-            </div>
+      <div className="flex flex-col md:flex-row min-h-screen">
+        <DuoNavBar activeTab={activeTab} setActiveTab={setActiveTab} lang={lang} />
+        <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full">
+          <div className="flex-1 flex flex-col min-h-screen">
+            <DuoTopBar
+              hearts={hearts}
+              gems={gems}
+              streak={streak}
+              streakFreezeActive={streakFreezeActive}
+              onOpenShop={() => setActiveTab('profile')}
+              lang={lang}
+              setLang={setLang}
+            />
+
+            <main className="flex-1 pb-24 md:pb-12">
+              {activeTab === 'path' && (
+                <DuoPath
+                  completedLessons={completedLessons}
+                  onStartLesson={(lesson) => setActiveLesson(lesson)}
+                  unlockedChests={unlockedChests}
+                  onUnlockChest={handleUnlockChest}
+                  lang={lang}
+                />
+              )}
+
+              {activeTab === 'cards' && (
+                <FlashcardsTrainerView
+                  lang={lang}
+                  learnedIds={learnedWords}
+                  onUpdateLearnedIds={setLearnedWords}
+                  onAwardXP={(amount) => {
+                    handleAwardXP(amount);
+                    if (hearts < 5) setHearts((prev) => Math.min(5, prev + 1));
+                  }}
+                />
+              )}
+
+              {activeTab === 'dictionary' && (
+                <PhrasebookView
+                  lang={lang}
+                  bookmarkedIds={savedPhrases}
+                  onUpdateBookmarkedIds={setSavedPhrases}
+                  onAwardXP={(amount) => handleAwardXP(amount)}
+                />
+              )}
+
+              {activeTab === 'leaderboard' && (
+                <LeaderboardView
+                  userXp={xp}
+                  streak={streak}
+                  completedLessonsCount={completedLessons.length}
+                  learnedWordsCount={learnedWords.length}
+                  lang={lang}
+                />
+              )}
+
+              {activeTab === 'profile' && (
+                <ProfileView
+                  xp={xp}
+                  streak={streak}
+                  hearts={hearts}
+                  setHearts={setHearts}
+                  gems={gems}
+                  setGems={setGems}
+                  streakFreezeActive={streakFreezeActive}
+                  setStreakFreezeActive={setStreakFreezeActive}
+                  completedLessonsCount={completedLessons.length}
+                  lang={lang}
+                  setLang={setLang}
+                  syncId={syncId}
+                  onSyncWithCode={handleSyncWithCode}
+                  currentStateForLink={currentStateForLink}
+                />
+              )}
+            </main>
+
+            {activeLesson && (
+              <LessonModal
+                lesson={activeLesson}
+                hearts={hearts}
+                setHearts={setHearts}
+                gems={gems}
+                setGems={setGems}
+                onFinishLesson={handleFinishLesson}
+                onClose={() => setActiveLesson(null)}
+                lang={lang}
+              />
+            )}
           </div>
         </div>
-      ) : (
-        <div className="flex flex-col md:flex-row min-h-screen">
-          <DuoNavBar activeTab={activeTab} setActiveTab={setActiveTab} />
-          <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full">
-            {renderContent()}
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { DUO_UNITS } from '../data/duoCurriculum';
+import { getDuoUnits } from '../data/duoCurriculum';
+import { UI_TEXT } from '../data/i18n';
 import DuoMascot from './DuoMascot';
 import { Star, Lock, Check, Gift, BookOpen, Volume2, Turtle, X } from 'lucide-react';
 import { telegramService } from '../services/telegramService';
@@ -11,14 +12,17 @@ export default function DuoPath({
   onStartLesson,
   unlockedChests,
   onUnlockChest,
+  lang = 'ru',
 }) {
   const [selectedGuidebookUnit, setSelectedGuidebookUnit] = useState(null);
+  const t = UI_TEXT[lang]?.path || UI_TEXT.ru.path;
+  const units = getDuoUnits(lang);
 
   const stepOffsets = [0, -38, 38, -25, 25, 0];
 
   return (
     <div className="max-w-xl mx-auto px-4 py-4 sm:py-6 space-y-12">
-      {DUO_UNITS.map((unit, unitIdx) => {
+      {units.map((unit, unitIdx) => {
         const isChestClaimed = unlockedChests.includes(unit.id);
         const allUnitLessonsDone = unit.lessons.every((l) =>
           completedLessons.includes(l.id)
@@ -33,7 +37,7 @@ export default function DuoPath({
               <div className="relative z-10 flex items-start justify-between gap-4">
                 <div>
                   <span className="text-xs font-black uppercase tracking-wider text-white/80 font-duo">
-                    Раздел {unit.number}
+                    {t.unit} {unit.number}
                   </span>
                   <h2 className="text-xl sm:text-2xl font-black font-duo mt-0.5">
                     {unit.title}
@@ -49,7 +53,7 @@ export default function DuoPath({
                   onClick={() => setSelectedGuidebookUnit(unit)}
                   className="px-3.5 py-2.5 rounded-2xl bg-white/20 hover:bg-white/30 backdrop-blur-md font-duo font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shrink-0"
                 >
-                  <BookOpen className="w-4 h-4" /> Слова раздела
+                  <BookOpen className="w-4 h-4" /> {t.unitWords}
                 </button>
               </div>
 
@@ -67,7 +71,7 @@ export default function DuoPath({
                     ? true
                     : idx === 0
                     ? completedLessons.includes(
-                        DUO_UNITS[unitIdx - 1]?.lessons.slice(-1)[0]?.id
+                        units[unitIdx - 1]?.lessons.slice(-1)[0]?.id
                       )
                     : completedLessons.includes(unit.lessons[idx - 1].id);
 
@@ -118,7 +122,7 @@ export default function DuoPath({
                         <DuoMascot
                           mood="happy"
                           size="sm"
-                          message="Жми на звезду! Учим слова по транскрипции!"
+                          message={t.mascotPrompt}
                         />
                       </div>
                     )}
@@ -145,16 +149,18 @@ export default function DuoPath({
                   }`}
                   title={
                     isChestClaimed
-                      ? 'Сундук открыт'
+                      ? t.chestOpened
                       : allUnitLessonsDone
-                      ? 'Забрать алмазы!'
-                      : 'Пройдите уроки раздела, чтобы открыть сундук'
+                      ? t.chestClaim
+                      : t.chestLocked
                   }
                 >
                   <Gift className="w-8 h-8" />
                 </button>
                 <span className="text-[11px] font-bold text-slate-400 mt-2 font-duo">
-                  {isChestClaimed ? 'Открыто (+💎)' : `Сундук раздела: +${unit.chestRewardGems} 💎`}
+                  {isChestClaimed
+                    ? t.chestOpenedLabel
+                    : `${t.chestReward}: +${unit.chestRewardGems} 💎`}
                 </span>
               </div>
             </div>
@@ -162,7 +168,7 @@ export default function DuoPath({
         );
       })}
 
-      {/* Guidebook Modal (Слова раздела со звуком) */}
+      {/* Guidebook Modal */}
       {selectedGuidebookUnit && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl relative max-h-[85vh] overflow-y-auto space-y-4">
@@ -180,7 +186,7 @@ export default function DuoPath({
               </div>
               <div>
                 <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 font-duo">
-                  Шпаргалка • Раздел {selectedGuidebookUnit.number}
+                  {t.guideTitle} • {t.unit} {selectedGuidebookUnit.number}
                 </span>
                 <h3 className="text-xl font-black font-duo text-slate-900 dark:text-white">
                   {selectedGuidebookUnit.title}
@@ -189,7 +195,7 @@ export default function DuoPath({
             </div>
 
             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-              Нажмите на любое слово, чтобы прослушать его произношение перед уроком:
+              {t.guideSubtitle}
             </p>
 
             <div className="space-y-2.5 pt-1">
@@ -218,7 +224,7 @@ export default function DuoPath({
                       type="button"
                       onClick={() => audioEngine.speakText(gw.trans.split('(')[0], 0.55)}
                       className="p-2 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 cursor-pointer"
-                      title="Медленно"
+                      title={t.slow}
                     >
                       <Turtle className="w-4 h-4" />
                     </button>
@@ -226,7 +232,7 @@ export default function DuoPath({
                       type="button"
                       onClick={() => audioEngine.speakText(gw.trans.split('(')[0], 0.85)}
                       className="p-2 rounded-xl bg-sky-500 text-white cursor-pointer"
-                      title="Слушать"
+                      title={t.listen}
                     >
                       <Volume2 className="w-4 h-4" />
                     </button>

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { VOCAB_WORDS, VOCAB_CATEGORIES } from '../data/vocabData';
+import { VOCAB_WORDS, VOCAB_CATEGORIES, getWordDisplay } from '../data/vocabData';
+import { UI_TEXT } from '../data/i18n';
 import { audioEngine } from '../services/audioService';
 import { telegramService } from '../services/telegramService';
 import VoiceRecorder from './VoiceRecorder';
@@ -11,23 +12,20 @@ import {
   Sparkles,
   Mic,
   ArrowLeftRight,
-  Filter,
 } from 'lucide-react';
 
-export default function FlashcardsTrainerView({ onAwardXP }) {
+export default function FlashcardsTrainerView({
+  onAwardXP,
+  lang = 'ru',
+  learnedIds = [],
+  onUpdateLearnedIds,
+}) {
+  const t = UI_TEXT[lang]?.cards || UI_TEXT.ru.cards;
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [reverseMode, setReverseMode] = useState(false); // false: Лаосская транскрипция -> Русский; true: Русский -> Вспомнить произношение
+  const [reverseMode, setReverseMode] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [showVoiceStudio, setShowVoiceStudio] = useState(false);
-
-  const [learnedIds, setLearnedIds] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('lao_learned_words') || '[]');
-    } catch {
-      return [];
-    }
-  });
 
   const filteredWords = useMemo(() => {
     if (selectedCategory === 'all') return VOCAB_WORDS;
@@ -38,13 +36,14 @@ export default function FlashcardsTrainerView({ onAwardXP }) {
     return VOCAB_WORDS.filter((w) => w.category === selectedCategory);
   }, [selectedCategory, learnedIds]);
 
-  const currentWord = filteredWords[currentIndex % filteredWords.length] || VOCAB_WORDS[0];
+  const rawWord = filteredWords[currentIndex % filteredWords.length] || VOCAB_WORDS[0];
+  const currentWord = getWordDisplay(rawWord, lang);
   const isWordLearned = learnedIds.includes(currentWord.id);
 
   const handlePlayAudio = (e, rate = 0.85) => {
     if (e) e.stopPropagation();
     telegramService.hapticImpact('light');
-    audioEngine.speakText(currentWord, rate);
+    audioEngine.speakText(rawWord, rate);
   };
 
   const handleNextCard = (markLearned = false) => {
@@ -53,8 +52,7 @@ export default function FlashcardsTrainerView({ onAwardXP }) {
       audioEngine.playFeedback('success');
       if (!learnedIds.includes(currentWord.id)) {
         const updated = [...learnedIds, currentWord.id];
-        setLearnedIds(updated);
-        localStorage.setItem('lao_learned_words', JSON.stringify(updated));
+        if (onUpdateLearnedIds) onUpdateLearnedIds(updated);
       }
       if (onAwardXP) onAwardXP(5);
     }
@@ -70,13 +68,13 @@ export default function FlashcardsTrainerView({ onAwardXP }) {
       <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-3xl p-5 text-white shadow-md flex items-center justify-between">
         <div>
           <span className="text-xs font-bold uppercase tracking-wider text-emerald-100 font-duo">
-            Тренажёр запоминания слов
+            {t.headerTag}
           </span>
           <h2 className="text-xl sm:text-2xl font-black font-duo mt-0.5">
-            Выучено: {learnedIds.length} из {VOCAB_WORDS.length} слов
+            {t.learnedCount(learnedIds.length, VOCAB_WORDS.length)}
           </h2>
           <p className="text-xs text-emerald-100 mt-1">
-            Слушайте произношение, переворачивайте карточки и повторяйте вслух!
+            {t.headerSub}
           </p>
         </div>
         <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-2xl font-black font-duo shrink-0">
@@ -99,7 +97,7 @@ export default function FlashcardsTrainerView({ onAwardXP }) {
               : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300'
           }`}
         >
-          Все ({VOCAB_WORDS.length})
+          {t.all} ({VOCAB_WORDS.length})
         </button>
         <button
           type="button"
@@ -114,7 +112,7 @@ export default function FlashcardsTrainerView({ onAwardXP }) {
               : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300'
           }`}
         >
-          🔥 Ещё не выученные ({VOCAB_WORDS.length - learnedIds.length})
+          {t.unlearned} ({VOCAB_WORDS.length - learnedIds.length})
         </button>
         {VOCAB_CATEGORIES.map((cat) => (
           <button
@@ -131,7 +129,7 @@ export default function FlashcardsTrainerView({ onAwardXP }) {
                 : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300'
             }`}
           >
-            {cat.icon} {cat.name}
+            {cat.icon} {lang === 'en' ? cat.enName : cat.name}
           </button>
         ))}
       </div>
@@ -139,7 +137,7 @@ export default function FlashcardsTrainerView({ onAwardXP }) {
       {/* Mode Switcher Bar */}
       <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1">
         <span className="font-bold">
-          Карточка {(currentIndex % filteredWords.length) + 1} из {filteredWords.length}
+          {t.cardCounter((currentIndex % filteredWords.length) + 1, filteredWords.length)}
         </span>
 
         <button
@@ -151,7 +149,7 @@ export default function FlashcardsTrainerView({ onAwardXP }) {
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-50 cursor-pointer"
         >
           <ArrowLeftRight className="w-3.5 h-3.5 text-emerald-500" />
-          {reverseMode ? 'Режим: Русский → Лаосский' : 'Режим: Транскрипция → Перевод'}
+          {reverseMode ? t.modeReverse : t.modeNormal}
         </button>
       </div>
 
@@ -161,7 +159,7 @@ export default function FlashcardsTrainerView({ onAwardXP }) {
           telegramService.hapticSelection();
           setIsFlipped(!isFlipped);
           if (!isFlipped) {
-            audioEngine.speakText(currentWord, 0.85);
+            audioEngine.speakText(rawWord, 0.85);
           }
         }}
         className={`w-full min-h-[310px] rounded-3xl p-6 sm:p-8 border-2 shadow-lg transition-all duration-300 cursor-pointer flex flex-col justify-between select-none ${
@@ -179,7 +177,7 @@ export default function FlashcardsTrainerView({ onAwardXP }) {
                 : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
             }`}
           >
-            {isWordLearned ? '✅ Выучено' : 'В процессе'} • {currentWord.tone}
+            {isWordLearned ? t.learnedBadge : t.inProgressBadge} • {currentWord.displayTone}
           </span>
 
           {/* Audio Normal & Slow Buttons */}
@@ -188,17 +186,17 @@ export default function FlashcardsTrainerView({ onAwardXP }) {
               type="button"
               onClick={(e) => handlePlayAudio(e, 0.55)}
               className="px-3 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 text-xs font-bold flex items-center gap-1 cursor-pointer btn-3d border-amber-300"
-              title="Послушать медленно по слогам"
+              title={t.slow}
             >
-              <Turtle className="w-4 h-4" /> Медленно
+              <Turtle className="w-4 h-4" /> {t.slow}
             </button>
             <button
               type="button"
               onClick={(e) => handlePlayAudio(e, 0.85)}
               className="px-3.5 py-2 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer btn-3d border-sky-700 shadow-sm"
-              title="Послушать произношение"
+              title={t.listen}
             >
-              <Volume2 className="w-4 h-4" /> Слушать
+              <Volume2 className="w-4 h-4" /> {t.listen}
             </button>
           </div>
         </div>
@@ -210,22 +208,22 @@ export default function FlashcardsTrainerView({ onAwardXP }) {
             {!reverseMode ? (
               <>
                 <span className="text-xs uppercase tracking-widest text-slate-400 font-bold block">
-                  Как произносится:
+                  {t.howPronounced}
                 </span>
                 <h3 className="text-3xl sm:text-4xl font-black tracking-tight text-emerald-600 dark:text-emerald-400">
-                  {currentWord.ruTrans}
+                  {currentWord.displayTrans}
                 </h3>
                 <p className="text-base sm:text-lg font-mono font-semibold text-slate-500 dark:text-slate-400">
-                  [{currentWord.latTrans}]
+                  [{currentWord.displayAltTrans}]
                 </p>
               </>
             ) : (
               <>
                 <span className="text-xs uppercase tracking-widest text-slate-400 font-bold block">
-                  Вспомните как сказать по-лаосски:
+                  {t.recallLao}
                 </span>
                 <h3 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-                  {currentWord.ruMeaning}
+                  {currentWord.displayMeaning}
                 </h3>
               </>
             )}
@@ -235,22 +233,22 @@ export default function FlashcardsTrainerView({ onAwardXP }) {
           <div className="text-center py-4 space-y-3 animate-in fade-in">
             <div>
               <h3 className="text-2xl sm:text-3xl font-black text-emerald-400">
-                {currentWord.ruTrans}
+                {currentWord.displayTrans}
               </h3>
-              <p className="text-sm font-mono text-slate-300">[{currentWord.latTrans}]</p>
+              <p className="text-sm font-mono text-slate-300">[{currentWord.displayAltTrans}]</p>
             </div>
 
             <div className="py-2 px-4 rounded-2xl bg-white/10 inline-block">
-              <p className="text-lg sm:text-xl font-bold text-white">{currentWord.ruMeaning}</p>
+              <p className="text-lg sm:text-xl font-bold text-white">{currentWord.displayMeaning}</p>
             </div>
 
             <div className="text-left bg-slate-800/90 rounded-2xl p-3.5 text-xs space-y-1.5 border border-slate-700">
               <p className="text-emerald-300 font-medium">
-                💡 <strong>Как произносить:</strong> {currentWord.pronunciationHint}
+                💡 <strong>{t.howToPronounceLabel}</strong> {currentWord.displayHint}
               </p>
-              {currentWord.literal && (
+              {currentWord.displayLiteral && (
                 <p className="text-slate-300">
-                  🧩 <strong>Дословно:</strong> {currentWord.literal}
+                  🧩 <strong>{t.literalLabel}</strong> {currentWord.displayLiteral}
                 </p>
               )}
             </div>
@@ -260,7 +258,7 @@ export default function FlashcardsTrainerView({ onAwardXP }) {
         {/* Bottom Hint */}
         <div className="text-center text-xs text-slate-400 flex items-center justify-center gap-1.5">
           <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-          <span>Нажмите на карточку, чтобы перевернуть и услышать</span>
+          <span>{t.tapToFlip}</span>
         </div>
       </div>
 
@@ -271,7 +269,7 @@ export default function FlashcardsTrainerView({ onAwardXP }) {
           onClick={() => handleNextCard(false)}
           className="py-3.5 px-4 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 font-duo font-bold text-sm hover:bg-slate-50 cursor-pointer btn-3d flex items-center justify-center gap-2"
         >
-          <RotateCcw className="w-4 h-4 text-amber-500" /> Повторить ещё
+          <RotateCcw className="w-4 h-4 text-amber-500" /> {t.repeatAgain}
         </button>
 
         <button
@@ -279,7 +277,7 @@ export default function FlashcardsTrainerView({ onAwardXP }) {
           onClick={() => handleNextCard(true)}
           className="py-3.5 px-4 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-duo font-bold text-sm shadow-md shadow-emerald-500/20 cursor-pointer btn-3d border-emerald-700 flex items-center justify-center gap-2"
         >
-          <CheckCircle2 className="w-4 h-4" /> Запомнил! (+5 XP)
+          <CheckCircle2 className="w-4 h-4" /> {t.rememberedBtn}
         </button>
       </div>
 
@@ -291,15 +289,16 @@ export default function FlashcardsTrainerView({ onAwardXP }) {
           className="w-full py-2.5 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition"
         >
           <Mic className="w-4 h-4 text-rose-500" />
-          {showVoiceStudio ? 'Скрыть запись голоса' : '🎙️ Записать своё произношение и сравнить'}
+          {showVoiceStudio ? t.hideVoice : t.showVoice}
         </button>
 
         {showVoiceStudio && (
           <div className="mt-3">
             <VoiceRecorder
-              targetPhrase={currentWord.ruTrans}
-              targetRom={currentWord.latTrans}
-              audioItem={currentWord}
+              targetPhrase={currentWord.displayTrans}
+              targetRom={currentWord.displayAltTrans}
+              audioItem={rawWord}
+              lang={lang}
               onPracticeComplete={() => {
                 if (onAwardXP) onAwardXP(10);
               }}

@@ -12,6 +12,7 @@ import {
 import DuoMascot from './DuoMascot';
 import { audioEngine } from '../services/audioService';
 import { telegramService } from '../services/telegramService';
+import { UI_TEXT } from '../data/i18n';
 import confetti from 'canvas-confetti';
 
 export default function LessonModal({
@@ -22,7 +23,9 @@ export default function LessonModal({
   onClose,
   gems,
   setGems,
+  lang = 'ru',
 }) {
+  const t = UI_TEXT[lang]?.lesson || UI_TEXT.ru.lesson;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [selectedWordBank, setSelectedWordBank] = useState([]);
@@ -54,7 +57,6 @@ export default function LessonModal({
       setSelectedWordBank([]);
     }
 
-    // Автоматическая озвучка при открытии задания
     const wordToSpeak = exercise.audioWord || exercise.laoPrompt || exercise.targetLao;
     if (wordToSpeak) {
       setTimeout(() => audioEngine.speakText(wordToSpeak, 0.85), 250);
@@ -181,14 +183,14 @@ export default function LessonModal({
           <DuoMascot
             mood="sad"
             size="lg"
-            message="Не беда! На ошибках мы запоминаем слова быстрее!"
+            message={t.noHeartsMsg}
             className="justify-center"
           />
           <h2 className="text-2xl font-black text-slate-900 dark:text-white font-duo">
-            Закончились жизни! (0 ❤️)
+            {t.noHeartsTitle}
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Восстановите жизни за алмазы или бесплатно на вкладке «Карточки / Практика».
+            {t.noHeartsSub}
           </p>
 
           <div className="space-y-2 pt-2">
@@ -202,14 +204,14 @@ export default function LessonModal({
               }}
               className="w-full py-3.5 px-4 rounded-2xl bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white font-bold font-duo text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer btn-3d border-rose-700"
             >
-              <Heart className="w-5 h-5 fill-current" /> Восстановить 5 жизней (50 💎)
+              <Heart className="w-5 h-5 fill-current" /> {t.refillBtn}
             </button>
             <button
               type="button"
               onClick={onClose}
               className="w-full py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-sm cursor-pointer"
             >
-              Выйти на главную
+              {t.exitHome}
             </button>
           </div>
         </div>
@@ -224,13 +226,13 @@ export default function LessonModal({
           <DuoMascot
             mood="celebrate"
             size="lg"
-            message="Супер! Слова урока освоены! Кхоп-тьа́й!"
+            message={t.completedMascot}
             className="justify-center"
           />
 
           <div>
             <span className="text-xs font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 font-duo">
-              Урок пройден!
+              {t.completedTag}
             </span>
             <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-duo mt-1">
               {lesson.laoTitle}
@@ -246,14 +248,14 @@ export default function LessonModal({
               <span className="text-xs font-bold text-amber-700 dark:text-amber-300 block font-duo">
                 +{lesson.xpReward} XP
               </span>
-              <span className="text-[10px] text-slate-400">Опыт</span>
+              <span className="text-[10px] text-slate-400">{t.xpLabel}</span>
             </div>
             <div className="p-3.5 rounded-2xl bg-sky-50 dark:bg-sky-950/40 border-2 border-sky-200 dark:border-sky-800 text-center">
               <Gem className="w-6 h-6 text-sky-500 mx-auto mb-1" />
               <span className="text-xs font-bold text-sky-700 dark:text-sky-300 block font-duo">
                 +{lesson.gemReward} 💎
               </span>
-              <span className="text-[10px] text-slate-400">Алмазы</span>
+              <span className="text-[10px] text-slate-400">{t.gemsLabel}</span>
             </div>
             <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border-2 border-emerald-200 dark:border-emerald-800 text-center">
               <Sparkles className="w-6 h-6 text-emerald-500 mx-auto mb-1" />
@@ -263,7 +265,7 @@ export default function LessonModal({
                 )}
                 %
               </span>
-              <span className="text-[10px] text-slate-400">Точность</span>
+              <span className="text-[10px] text-slate-400">{t.accuracyLabel}</span>
             </div>
           </div>
 
@@ -272,7 +274,7 @@ export default function LessonModal({
             onClick={onClose}
             className="w-full py-4 px-6 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-base font-duo shadow-lg shadow-emerald-500/30 btn-3d border-emerald-700 cursor-pointer active:scale-95 transition"
           >
-            ПРОДОЛЖИТЬ
+            {t.continueBtn}
           </button>
         </div>
       </div>
@@ -329,7 +331,7 @@ export default function LessonModal({
                 }
                 className="px-3.5 py-2.5 rounded-2xl bg-sky-500 hover:bg-sky-600 text-white flex items-center gap-2 shadow-md shadow-sky-500/20 active:scale-95 transition cursor-pointer btn-3d border-sky-700 font-bold text-xs"
               >
-                <Volume2 className="w-5 h-5" /> Слушать
+                <Volume2 className="w-5 h-5" /> {t.listen}
               </button>
 
               <button
@@ -338,9 +340,9 @@ export default function LessonModal({
                   audioEngine.speakText(exercise.audioWord || exercise.laoPrompt, 0.55)
                 }
                 className="px-3 py-2.5 rounded-2xl bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 flex items-center gap-1.5 active:scale-95 transition cursor-pointer btn-3d border-amber-300 font-bold text-xs"
-                title="Медленно по слогам"
+                title={t.slow}
               >
-                <Turtle className="w-4 h-4" /> Медленно
+                <Turtle className="w-4 h-4" /> {t.slow}
               </button>
 
               {exercise.laoPrompt && (
@@ -368,7 +370,7 @@ export default function LessonModal({
               ))}
               {selectedWordBank.length === 0 && (
                 <span className="text-xs text-slate-400 italic">
-                  Нажимайте на слова ниже по порядку...
+                  {t.wordBankPlaceholder}
                 </span>
               )}
             </div>
@@ -496,7 +498,7 @@ export default function LessonModal({
                   audioEngine.speakText(exercise.audioWord || exercise.targetLao, 0.85)
                 }
                 className="w-16 h-16 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white inline-flex items-center justify-center shadow-lg shadow-emerald-500/30 btn-3d border-emerald-700 active:scale-95 transition cursor-pointer"
-                title="Обычная скорость"
+                title={t.listen}
               >
                 <Volume2 className="w-8 h-8" />
               </button>
@@ -506,7 +508,7 @@ export default function LessonModal({
                   audioEngine.speakText(exercise.audioWord || exercise.targetLao, 0.55)
                 }
                 className="w-16 h-16 rounded-2xl bg-amber-400 hover:bg-amber-500 text-amber-950 inline-flex items-center justify-center shadow-md btn-3d border-amber-600 active:scale-95 transition cursor-pointer"
-                title="Медленно по слогам"
+                title={t.slow}
               >
                 <Turtle className="w-8 h-8" />
               </button>
@@ -525,7 +527,7 @@ export default function LessonModal({
             </div>
 
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Прослушайте и повторите фразу вслух 2–3 раза для запоминания!
+              {t.repeatHint}
             </p>
           </div>
         )}
@@ -549,7 +551,7 @@ export default function LessonModal({
                   <Check className="w-6 h-6 stroke-[3]" />
                 </div>
                 <div>
-                  <h4 className="font-black text-lg font-duo">Отлично! (Ди ла́й!)</h4>
+                  <h4 className="font-black text-lg font-duo">{t.correctTitle}</h4>
                   {exercise.tip && <p className="text-xs opacity-90 max-w-md">{exercise.tip}</p>}
                 </div>
               </div>
@@ -561,7 +563,7 @@ export default function LessonModal({
                   <X className="w-6 h-6 stroke-[3]" />
                 </div>
                 <div>
-                  <h4 className="font-black text-base font-duo">Правильный ответ:</h4>
+                  <h4 className="font-black text-base font-duo">{t.wrongTitle}</h4>
                   <p className="text-sm font-bold max-w-md">
                     {exercise.type === 'word_bank'
                       ? exercise.targetSentence
@@ -587,7 +589,7 @@ export default function LessonModal({
                 : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 border-slate-300 dark:border-slate-700 cursor-not-allowed'
             }`}
           >
-            {evaluationState !== 'idle' ? 'ДАЛЬШЕ' : 'ПРОВЕРИТЬ'}
+            {evaluationState !== 'idle' ? t.nextBtn : t.checkBtn}
           </button>
         </div>
       </div>
@@ -597,10 +599,10 @@ export default function LessonModal({
         <div className="fixed inset-0 z-60 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-sm w-full text-center space-y-4">
             <h3 className="text-xl font-black text-slate-900 dark:text-white font-duo">
-              Выйти из урока?
+              {t.quitTitle}
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Прогресс текущего урока не сохранится.
+              {t.quitSub}
             </p>
             <div className="space-y-2 pt-2">
               <button
@@ -608,14 +610,14 @@ export default function LessonModal({
                 onClick={() => setShowQuitConfirm(false)}
                 className="w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold font-duo text-sm cursor-pointer btn-3d border-emerald-700"
               >
-                ПРОДОЛЖИТЬ УРОК
+                {t.keepLearning}
               </button>
               <button
                 type="button"
                 onClick={onClose}
                 className="w-full py-2.5 rounded-2xl text-rose-500 font-bold font-duo text-sm cursor-pointer hover:bg-rose-50 dark:hover:bg-rose-950/40"
               >
-                ВЫЙТИ
+                {t.quitConfirm}
               </button>
             </div>
           </div>

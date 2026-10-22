@@ -1,29 +1,31 @@
 import React from 'react';
-import { Trophy, Sparkles } from 'lucide-react';
+import { Trophy, Sparkles, Flame, BookOpen, Layers } from 'lucide-react';
 import { telegramService } from '../services/telegramService';
+import { UI_TEXT } from '../data/i18n';
 
-export default function LeaderboardView({ userXp }) {
+export default function LeaderboardView({
+  userXp = 0,
+  streak = 0,
+  completedLessonsCount = 0,
+  learnedWordsCount = 0,
+  lang = 'ru',
+}) {
+  const t = UI_TEXT[lang]?.leaderboard || UI_TEXT.ru.leaderboard;
   const tgUser = telegramService.getUser();
 
-  const mockUsers = [
-    { rank: 1, name: 'Сомсай (Вьентьян)', xp: 480, avatar: '🇱🇦' },
-    { rank: 2, name: 'Алина К.', xp: 420, avatar: '🌸' },
-    { rank: 3, name: 'Анусон (Луангпхабанг)', xp: 390, avatar: '🐘' },
+  const displayName =
+    tgUser.firstName === 'Lao Learner' ? t.you : `${tgUser.firstName} ${tgUser.lastName || ''}`.trim();
+
+  // Only real user entry (no fake demo bots)
+  const realParticipants = [
     {
-      rank: 4,
-      name: tgUser.firstName === 'Lao Learner' ? 'Вы' : tgUser.firstName,
+      rank: 1,
+      name: displayName,
       xp: userXp,
       isCurrentUser: true,
       avatar: tgUser.photoUrl || '⭐',
     },
-    { rank: 5, name: 'Дмитрий В.', xp: 260, avatar: '☕' },
-    { rank: 6, name: 'Бунми', xp: 210, avatar: '🌴' },
-    { rank: 7, name: 'Максим П.', xp: 140, avatar: '🎒' },
   ];
-
-  const sortedUsers = [...mockUsers]
-    .sort((a, b) => b.xp - a.xp)
-    .map((u, i) => ({ ...u, rank: i + 1 }));
 
   return (
     <div className="max-w-md mx-auto px-4 py-6 space-y-6">
@@ -32,35 +34,22 @@ export default function LeaderboardView({ userXp }) {
           <Trophy className="w-10 h-10" />
         </div>
         <h2 className="text-2xl font-black font-duo text-slate-900 dark:text-white">
-          Золотая лига
+          {t.title}
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          Топ-3 переходят в Алмазную лигу по итогам недели!
+          {t.subtitle}
         </p>
       </div>
 
+      {/* Real User League Row */}
       <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-xs divide-y divide-slate-100 dark:divide-slate-800">
-        {sortedUsers.map((learner) => (
+        {realParticipants.map((learner) => (
           <div
             key={learner.name}
-            className={`p-3.5 sm:p-4 flex items-center justify-between transition ${
-              learner.isCurrentUser
-                ? 'bg-emerald-50 dark:bg-emerald-950/40 font-bold border-l-4 border-l-emerald-500'
-                : 'hover:bg-slate-50 dark:hover:bg-slate-850'
-            }`}
+            className="p-4 flex items-center justify-between bg-emerald-50/70 dark:bg-emerald-950/30 font-bold border-l-4 border-l-emerald-500"
           >
             <div className="flex items-center gap-3">
-              <span
-                className={`w-6 text-center font-duo font-bold text-sm ${
-                  learner.rank === 1
-                    ? 'text-amber-500 font-black text-base'
-                    : learner.rank === 2
-                    ? 'text-slate-400 font-black'
-                    : learner.rank === 3
-                    ? 'text-amber-700 font-black'
-                    : 'text-slate-400'
-                }`}
-              >
+              <span className="w-6 text-center font-duo font-black text-base text-amber-500">
                 {learner.rank}
               </span>
 
@@ -68,30 +57,76 @@ export default function LeaderboardView({ userXp }) {
                 <img
                   src={learner.avatar}
                   alt=""
-                  className="w-10 h-10 rounded-full object-cover border-2 border-emerald-500"
+                  className="w-11 h-11 rounded-full object-cover border-2 border-emerald-500"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-lg">
+                <div className="w-11 h-11 rounded-full bg-emerald-500 text-white flex items-center justify-center text-lg shadow-xs">
                   {learner.avatar}
                 </div>
               )}
 
               <div>
-                <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 block">
-                  {learner.name} {learner.isCurrentUser && '(Вы)'}
+                <span className="text-sm font-black text-slate-800 dark:text-slate-100 block">
+                  {learner.name} ({t.you})
                 </span>
-                <span className="text-[11px] text-slate-400">
-                  {learner.rank <= 3 ? '🏆 Зона повышения' : 'Активный участник'}
+                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                  {learner.xp > 0 ? t.promotionZone : t.activeLearner}
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 font-duo font-bold text-sm text-slate-700 dark:text-slate-300">
+            <div className="flex items-center gap-1.5 font-duo font-black text-base text-slate-800 dark:text-slate-100">
               <span>{learner.xp} XP</span>
-              {learner.rank <= 3 && <Sparkles className="w-3.5 h-3.5 text-amber-500" />}
+              <Sparkles className="w-4 h-4 text-amber-500" />
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Real Personal Breakdown Card */}
+      <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-xs space-y-4">
+        <div className="grid grid-cols-3 gap-2.5 text-center">
+          <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40">
+            <Flame className="w-5 h-5 text-amber-500 fill-amber-500 mx-auto mb-1" />
+            <span className="font-duo font-black text-base text-slate-800 dark:text-white block">
+              {streak}
+            </span>
+            <span className="text-[10px] text-slate-400">
+              {lang === 'en' ? 'Streak' : 'Дней подряд'}
+            </span>
+          </div>
+
+          <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40">
+            <BookOpen className="w-5 h-5 text-emerald-500 mx-auto mb-1" />
+            <span className="font-duo font-black text-base text-slate-800 dark:text-white block">
+              {completedLessonsCount}
+            </span>
+            <span className="text-[10px] text-slate-400">
+              {lang === 'en' ? 'Lessons' : 'Уроков'}
+            </span>
+          </div>
+
+          <div className="p-3 rounded-2xl bg-sky-50 dark:bg-sky-950/40">
+            <Layers className="w-5 h-5 text-sky-500 mx-auto mb-1" />
+            <span className="font-duo font-black text-base text-slate-800 dark:text-white block">
+              {learnedWordsCount}
+            </span>
+            <span className="text-[10px] text-slate-400">
+              {lang === 'en' ? 'Words' : 'Слов'}
+            </span>
+          </div>
+        </div>
+
+        {userXp === 0 && (
+          <div className="text-center py-2 px-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60">
+            <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
+              {t.noFakeUsersTitle}
+            </p>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              {t.noFakeUsersDesc}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
