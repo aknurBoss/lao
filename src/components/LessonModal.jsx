@@ -293,7 +293,7 @@ export default function LessonModal({
   return (
     <div className="fixed inset-0 z-50 bg-white dark:bg-slate-950 flex flex-col justify-between overflow-hidden">
       {/* Top Bar */}
-      <div className="max-w-3xl w-full mx-auto px-4 pt-safe py-3 flex items-center justify-between gap-3">
+      <div className="max-w-3xl w-full mx-auto px-4 pt-safe pb-3 flex items-center justify-between gap-3">
         <button
           type="button"
           onClick={() => setShowQuitConfirm(true)}

@@ -22,7 +22,7 @@ export default function DuoTopBar({
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b-2 border-slate-200 dark:border-slate-800 pt-safe px-4 py-2 sm:py-2.5">
+    <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b-2 border-slate-200 dark:border-slate-800 pt-safe pb-2.5 px-4">
       <div className="max-w-2xl mx-auto flex items-center justify-between">
         {/* Flag & Brand */}
         <div className="flex items-center gap-2">

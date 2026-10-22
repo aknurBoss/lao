@@ -64,7 +64,7 @@ export default function TelegramAuthScreen({
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex flex-col justify-between p-4 sm:p-6">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex flex-col justify-between px-4 pb-4 pt-safe sm:p-6">
       {/* Top Bar with Brand & Language Switch */}
       <div className="max-w-md w-full mx-auto flex items-center justify-between py-2">
         <div className="flex items-center gap-2.5">
