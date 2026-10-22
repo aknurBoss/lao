@@ -1,8 +1,20 @@
 import React, { useState } from 'react';
-import { getDuoUnits } from '../data/duoCurriculum';
+import { getDuoUnits, buildMistakesReviewLesson } from '../data/duoCurriculum';
 import { UI_TEXT } from '../data/i18n';
 import DuoMascot from './DuoMascot';
-import { Star, Lock, Check, Gift, BookOpen, Volume2, Turtle, X } from 'lucide-react';
+import {
+  Star,
+  Lock,
+  Check,
+  Gift,
+  BookOpen,
+  Volume2,
+  Turtle,
+  X,
+  Brain,
+  Wrench,
+  Sparkles,
+} from 'lucide-react';
 import { telegramService } from '../services/telegramService';
 import { audioEngine } from '../services/audioService';
 import confetti from 'canvas-confetti';
@@ -12,16 +24,115 @@ export default function DuoPath({
   onStartLesson,
   unlockedChests,
   onUnlockChest,
+  mistakeWords = [],
+  learnedWords = [],
   lang = 'ru',
 }) {
   const [selectedGuidebookUnit, setSelectedGuidebookUnit] = useState(null);
   const t = UI_TEXT[lang]?.path || UI_TEXT.ru.path;
+  const isRu = lang === 'ru';
   const units = getDuoUnits(lang);
 
   const stepOffsets = [0, -38, 38, -25, 25, 0];
 
+  const handleStartMistakesReview = () => {
+    telegramService.hapticImpact('medium');
+    const reviewLesson = buildMistakesReviewLesson(mistakeWords, lang, false);
+    onStartLesson(reviewLesson);
+  };
+
+  const handleStartSrsReview = () => {
+    telegramService.hapticImpact('medium');
+    const pool = learnedWords.length > 0 ? learnedWords : ['w1', 'w2', 'w3', 'w4', 'b1', 'f2'];
+    const reviewLesson = buildMistakesReviewLesson(pool, lang, true);
+    onStartLesson(reviewLesson);
+  };
+
   return (
-    <div className="max-w-xl mx-auto px-4 py-4 sm:py-6 space-y-12">
+    <div className="max-w-xl mx-auto px-4 py-4 sm:py-6 space-y-10">
+      {/* Smart SRS & Mistakes Review Hub */}
+      <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-emerald-500" />
+            <span className="text-xs font-duo font-black uppercase tracking-wider text-slate-700 dark:text-slate-200">
+              {isRu
+                ? 'Умное повторение (SRS) и Ошибки'
+                : 'Smart SRS & Mistakes Review'}
+            </span>
+          </div>
+          <span className="text-[11px] font-bold text-slate-400">
+            {isRu ? '150 слов в базе' : '150 words total'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {/* Mistakes Review Button */}
+          <button
+            type="button"
+            onClick={handleStartMistakesReview}
+            className={`p-3.5 rounded-2xl border-2 text-left flex items-center justify-between gap-3 transition cursor-pointer btn-3d ${
+              mistakeWords.length > 0
+                ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-100'
+                : 'bg-slate-50 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                  mistakeWords.length > 0
+                    ? 'bg-rose-500 text-white'
+                    : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
+                }`}
+              >
+                <Wrench className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="font-duo font-black text-xs sm:text-sm block">
+                  {isRu ? 'Работа над ошибками' : 'Mistakes Review'}
+                </span>
+                <span className="text-[11px] opacity-75 block">
+                  {mistakeWords.length > 0
+                    ? isRu
+                      ? `${mistakeWords.length} сл. для разбора (+1 ❤️)`
+                      : `${mistakeWords.length} words to fix (+1 ❤️)`
+                    : isRu
+                    ? 'Ошибок нет! Быстрый повтор'
+                    : '0 mistakes! Quick practice'}
+                </span>
+              </div>
+            </div>
+            {mistakeWords.length > 0 && (
+              <span className="px-2.5 py-1 rounded-full bg-rose-500 text-white font-duo font-black text-xs">
+                {mistakeWords.length}
+              </span>
+            )}
+          </button>
+
+          {/* Smart Spaced Repetition (SRS) Button */}
+          <button
+            type="button"
+            onClick={handleStartSrsReview}
+            className="p-3.5 rounded-2xl border-2 bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800 text-indigo-950 dark:text-indigo-100 text-left flex items-center justify-between gap-3 transition cursor-pointer btn-3d"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-500 text-white flex items-center justify-center shrink-0">
+                <Brain className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="font-duo font-black text-xs sm:text-sm block">
+                  {isRu ? 'Интервальный повтор' : 'Smart SRS Review'}
+                </span>
+                <span className="text-[11px] opacity-75 block">
+                  {isRu
+                    ? `Закрепить слова (+20 XP)`
+                    : `Reinforce memory (+20 XP)`}
+                </span>
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
       {units.map((unit, unitIdx) => {
         const isChestClaimed = unlockedChests.includes(unit.id);
         const allUnitLessonsDone = unit.lessons.every((l) =>

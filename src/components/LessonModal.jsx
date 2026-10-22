@@ -20,6 +20,7 @@ export default function LessonModal({
   hearts,
   setHearts,
   onFinishLesson,
+  onRecordMistake,
   onClose,
   gems,
   setGems,
@@ -167,6 +168,17 @@ export default function LessonModal({
       audioEngine.playFeedback('error');
       setEvaluationState('wrong');
       setMistakesCount((prev) => prev + 1);
+
+      if (onRecordMistake) {
+        const missedId =
+          exercise.wordId ||
+          audioEngine.resolveAudioId(
+            exercise.audioWord || exercise.laoPrompt || exercise.targetLao
+          );
+        if (missedId && !String(missedId).startsWith('c') && !String(missedId).startsWith('wb')) {
+          onRecordMistake(missedId);
+        }
+      }
 
       setHearts((prev) => {
         const next = Math.max(0, prev - 1);

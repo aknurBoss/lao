@@ -1,7 +1,18 @@
-import React, { useState } from 'react';
-import { Globe, Smartphone, Laptop, KeyRound, CheckCircle2, ArrowRight, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import {
+  Globe,
+  Smartphone,
+  Laptop,
+  KeyRound,
+  CheckCircle2,
+  ArrowRight,
+  ShieldCheck,
+  QrCode,
+  RefreshCw,
+} from 'lucide-react';
 import DuoMascot from './DuoMascot';
 import { telegramService } from '../services/telegramService';
+import { syncService } from '../services/syncService';
 
 export default function TelegramAuthScreen({
   lang = 'ru',
@@ -14,8 +25,51 @@ export default function TelegramAuthScreen({
   const [mode, setMode] = useState('laptop'); // 'laptop' | 'register_tg'
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [qrChallengeId, setQrChallengeId] = useState(() =>
+    'QR-' + Math.random().toString(36).substring(2, 8).toUpperCase()
+  );
+  const [qrApproved, setQrApproved] = useState(false);
 
   const isRu = lang === 'ru';
+
+  // Listen for QR code approval from the phone/Telegram
+  useEffect(() => {
+    if (mode !== 'laptop' || !qrChallengeId) return;
+
+    const unsubscribe = syncService.listenForQrChallengeApproval(
+      qrChallengeId,
+      async (approvedSyncId, approvedData) => {
+        setQrApproved(true);
+        telegramService.hapticNotification('success');
+        setIsLoading(true);
+        try {
+          await onLoginWithTelegramCode(approvedSyncId, approvedData);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    );
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [mode, qrChallengeId]);
+
+  const qrApprovalUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}${window.location.pathname}?approveQr=${encodeURIComponent(
+          qrChallengeId
+        )}`
+      : `https://laolingo.pages.dev/?approveQr=${qrChallengeId}`;
+
+  const qrImageSrc = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(
+    qrApprovalUrl
+  )}`;
+
+  const handleRefreshQr = () => {
+    setQrChallengeId('QR-' + Math.random().toString(36).substring(2, 8).toUpperCase());
+    setQrApproved(false);
+  };
 
   const handleLaptopLogin = async (e) => {
     e.preventDefault();
@@ -23,8 +77,8 @@ export default function TelegramAuthScreen({
     if (!raw) {
       setErrorMsg(
         isRu
-          ? 'Введите код входа из вашего Telegram (например, TG-123456) или вставьте ссылку'
-          : 'Please enter the login code from your Telegram (e.g. TG-123456) or paste the link'
+          ? 'Введите код входа из вашего Telegram (например, TG-123456) или отсканируйте QR-код выше'
+          : 'Please enter the login code from your Telegram (e.g. TG-123456) or scan the QR code above'
       );
       return;
     }
@@ -93,7 +147,7 @@ export default function TelegramAuthScreen({
 
       {/* Center Auth Card */}
       <div className="max-w-md w-full mx-auto my-auto py-4">
-        <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-7 shadow-xl space-y-6">
+        <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-7 shadow-xl space-y-5">
           <div className="flex flex-col items-center text-center space-y-2">
             <DuoMascot
               mood="happy"
@@ -111,10 +165,10 @@ export default function TelegramAuthScreen({
             <h1 className="text-2xl font-black font-duo text-slate-900 dark:text-white">
               {isRu ? 'Вход в LaoLingo' : 'Sign in to LaoLingo'}
             </h1>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
               {isRu
-                ? 'Telegram считается главным устройством. Подключите этот браузер к вашему Telegram, чтобы синхронизировать прогресс и управлять сеансами.'
-                : 'Telegram is the master device. Link this browser to your Telegram to sync your progress and manage active sessions.'}
+                ? 'Telegram — ваше главное устройство. Отсканируйте QR-код с телефона или введите код входа.'
+                : 'Telegram is your master device. Scan the QR code with your phone or enter your login code.'}
             </p>
           </div>
 
@@ -154,38 +208,56 @@ export default function TelegramAuthScreen({
 
           {mode === 'laptop' ? (
             <form onSubmit={handleLaptopLogin} className="space-y-4">
-              {/* Step-by-step instructions */}
-              <div className="bg-slate-50 dark:bg-slate-800/70 rounded-2xl p-4 space-y-2.5 text-xs text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/60">
-                <div className="flex items-start gap-2.5">
-                  <span className="w-5 h-5 rounded-full bg-sky-500 text-white font-black text-[11px] flex items-center justify-center shrink-0 mt-0.5">
-                    1
-                  </span>
+              {/* Instant QR Code Login Block */}
+              <div className="bg-slate-50 dark:bg-slate-800/70 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-700/60 flex flex-col items-center text-center space-y-2.5">
+                <div className="flex items-center gap-1.5 text-xs font-duo font-black text-sky-600 dark:text-sky-400">
+                  <QrCode className="w-4 h-4" />
                   <span>
                     {isRu
-                      ? 'Откройте приложение LaoLingo в вашем Telegram на телефоне.'
-                      : 'Open LaoLingo inside your Telegram app on your phone.'}
+                      ? 'Быстрый вход по QR-коду (без ввода кода)'
+                      : 'Instant Login via QR Code'}
                   </span>
                 </div>
-                <div className="flex items-start gap-2.5">
-                  <span className="w-5 h-5 rounded-full bg-sky-500 text-white font-black text-[11px] flex items-center justify-center shrink-0 mt-0.5">
-                    2
-                  </span>
+
+                <div className="relative bg-white p-2.5 rounded-2xl shadow-sm border border-slate-200">
+                  <img
+                    src={qrImageSrc}
+                    alt="QR Login"
+                    className="w-36 h-36 sm:w-40 sm:h-40 object-contain rounded-lg"
+                  />
+                  {qrApproved && (
+                    <div className="absolute inset-0 bg-emerald-500/95 rounded-2xl flex flex-col items-center justify-center text-white p-2">
+                      <CheckCircle2 className="w-10 h-10 mb-1 animate-bounce" />
+                      <span className="text-xs font-duo font-black">
+                        {isRu ? 'Вход подтверждён!' : 'Login Approved!'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
                   <span>
                     {isRu
-                      ? 'Откройте вкладку «Сеансы / Профиль» и посмотрите ваш Код входа (TG-...).'
-                      : 'Open the "Sessions / Profile" tab and copy your Login Code (TG-...).'}
+                      ? 'Наведите камеру телефона или нажмите «Сканировать QR» в Профиле Telegram'
+                      : 'Scan with your phone camera or tap "Scan QR" in Telegram Profile'}
                   </span>
+                  <button
+                    type="button"
+                    onClick={handleRefreshQr}
+                    className="p-1.5 rounded-lg bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-sky-500 cursor-pointer shrink-0"
+                    title={isRu ? 'Обновить QR-код' : 'Refresh QR Code'}
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-                <div className="flex items-start gap-2.5">
-                  <span className="w-5 h-5 rounded-full bg-emerald-500 text-white font-black text-[11px] flex items-center justify-center shrink-0 mt-0.5">
-                    3
-                  </span>
-                  <span>
-                    {isRu
-                      ? 'Введите этот код ниже — ноутбук появится в списке активных сеансов в вашем Telegram!'
-                      : 'Enter that code below — your laptop will appear in your Telegram Active Sessions!'}
-                  </span>
-                </div>
+              </div>
+
+              <div className="relative flex py-1 items-center">
+                <div className="grow border-t border-slate-200 dark:border-slate-800"></div>
+                <span className="shrink mx-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  {isRu ? 'или по коду TG-...' : 'or enter TG-... code'}
+                </span>
+                <div className="grow border-t border-slate-200 dark:border-slate-800"></div>
               </div>
 
               <div className="space-y-2">

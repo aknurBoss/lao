@@ -209,6 +209,28 @@ class TelegramService {
       } catch (e) {}
     }
   }
+
+  // Open native Telegram QR Scanner on phone to scan Laptop Login QR code
+  scanQrCode(promptText = 'Наведите камеру на QR-код на экране ноутбука') {
+    return new Promise((resolve) => {
+      if (this.supportsVersion('6.4') && this.tg?.showScanQrPopup) {
+        try {
+          this.tg.showScanQrPopup({ text: promptText }, (qrText) => {
+            if (qrText) {
+              try {
+                this.tg.closeScanQrPopup();
+              } catch (e) {}
+              resolve(qrText);
+              return true;
+            }
+            return false;
+          });
+          return;
+        } catch (e) {}
+      }
+      resolve(null);
+    });
+  }
 }
 
 export const telegramService = new TelegramService();

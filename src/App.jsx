@@ -16,6 +16,7 @@ export default function App() {
   const [activeLesson, setActiveLesson] = useState(null);
   const [syncId, setSyncId] = useState(() => syncService.getSyncId());
   const [isAuthenticated, setIsAuthenticated] = useState(() => syncService.isAuthenticated());
+  const [qrBannerMsg, setQrBannerMsg] = useState('');
 
   // Bilingual support: 'ru' | 'en'
   const [lang, setLang] = useState(() => {
@@ -95,6 +96,14 @@ export default function App() {
     }
   });
 
+  const [mistakeWords, setMistakeWords] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('laolingo_mistake_words') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
   const [savedPhrases, setSavedPhrases] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('laolingo_saved_phrases') || '[]');
@@ -164,6 +173,9 @@ export default function App() {
     if (Array.isArray(merged.learnedWords)) {
       setLearnedWords(merged.learnedWords);
     }
+    if (Array.isArray(merged.mistakeWords)) {
+      setMistakeWords(merged.mistakeWords);
+    }
     if (Array.isArray(merged.savedPhrases)) {
       setSavedPhrases(merged.savedPhrases);
     }
@@ -187,6 +199,7 @@ export default function App() {
     completedLessons,
     unlockedChests,
     learnedWords,
+    mistakeWords,
     savedPhrases,
     sessions,
     revokedSessionIds,
@@ -194,7 +207,7 @@ export default function App() {
     updatedAt: Number(localStorage.getItem('laolingo_updated_at') || Date.now()),
   });
 
-  // Initial sync on load (URL Magic Link + Telegram CloudStorage + Cloud KV)
+  // Initial sync on load (URL Magic Link + QR Approval + Telegram CloudStorage + Cloud KV)
   useEffect(() => {
     const currentSnapshot = getCurrentSnapshot();
     const urlState = syncService.consumeUrlSyncData();
@@ -202,6 +215,16 @@ export default function App() {
     setSyncId(activeSyncId);
     const authed = syncService.isAuthenticated();
     setIsAuthenticated(authed);
+
+    // Check if user scanned a Laptop QR Code (?approveQr=QR-...)
+    let pendingQrChallenge = null;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      pendingQrChallenge = params.get('approveQr');
+      if (pendingQrChallenge) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    } catch {}
 
     if (!authed) {
       isInitialMount.current = false;
@@ -211,6 +234,17 @@ export default function App() {
     const baseState = urlState ? mergeStates(currentSnapshot, urlState) : currentSnapshot;
     if (urlState) {
       applyMergedState(baseState, true);
+    }
+
+    if (pendingQrChallenge && pendingQrChallenge.startsWith('QR-')) {
+      syncService.approveLaptopQrChallenge(pendingQrChallenge, baseState).then(() => {
+        setQrBannerMsg(
+          lang === 'ru'
+            ? '✅ Вход на ноутбуке по QR-коду успешно подтверждён!'
+            : '✅ Laptop QR Login successfully approved!'
+        );
+        setTimeout(() => setQrBannerMsg(''), 5000);
+      });
     }
 
     syncService.syncAll(baseState).then((remoteMerged) => {
@@ -244,6 +278,7 @@ export default function App() {
         completedLessons: JSON.parse(localStorage.getItem('laolingo_completed_lessons') || '[]'),
         unlockedChests: JSON.parse(localStorage.getItem('laolingo_unlocked_chests') || '[]'),
         learnedWords: JSON.parse(localStorage.getItem('laolingo_learned_words') || '[]'),
+        mistakeWords: JSON.parse(localStorage.getItem('laolingo_mistake_words') || '[]'),
         savedPhrases: JSON.parse(localStorage.getItem('laolingo_saved_phrases') || '[]'),
         sessions: JSON.parse(localStorage.getItem('laolingo_sessions') || '[]'),
         revokedSessionIds: JSON.parse(localStorage.getItem('laolingo_revoked_sessions') || '[]'),
@@ -267,6 +302,7 @@ export default function App() {
     localStorage.setItem('laolingo_completed_lessons', JSON.stringify(completedLessons));
     localStorage.setItem('laolingo_unlocked_chests', JSON.stringify(unlockedChests));
     localStorage.setItem('laolingo_learned_words', JSON.stringify(learnedWords));
+    localStorage.setItem('laolingo_mistake_words', JSON.stringify(mistakeWords));
     localStorage.setItem('laolingo_saved_phrases', JSON.stringify(savedPhrases));
     localStorage.setItem('laolingo_sessions', JSON.stringify(sessions));
     localStorage.setItem('laolingo_revoked_sessions', JSON.stringify(revokedSessionIds));
@@ -289,6 +325,7 @@ export default function App() {
       completedLessons,
       unlockedChests,
       learnedWords,
+      mistakeWords,
       savedPhrases,
       sessions,
       revokedSessionIds,
@@ -313,6 +350,7 @@ export default function App() {
     completedLessons,
     unlockedChests,
     learnedWords,
+    mistakeWords,
     savedPhrases,
     sessions,
     revokedSessionIds,
@@ -331,6 +369,11 @@ export default function App() {
     setStreak((prev) => (prev === 0 ? 1 : prev));
   };
 
+  const handleRecordMistake = (wordId) => {
+    if (!wordId) return;
+    setMistakeWords((prev) => (prev.includes(wordId) ? prev : [...prev, wordId]));
+  };
+
   const handleFinishLesson = (lesson, isPerfect) => {
     const gainedXp = lesson.xpReward + (isPerfect ? 5 : 0);
     const gainedGems = lesson.gemReward;
@@ -338,6 +381,17 @@ export default function App() {
     setXp((prev) => prev + gainedXp);
     setGems((prev) => prev + gainedGems);
     setStreak((prev) => (prev === 0 ? 1 : prev));
+
+    // If this was a Smart Review / Mistakes Review lesson, clear reviewed mistakes and restore +1 heart
+    if (lesson.isReviewLesson) {
+      if (Array.isArray(lesson.reviewedWordIds) && lesson.reviewedWordIds.length > 0) {
+        setMistakeWords((prev) =>
+          prev.filter((id) => !lesson.reviewedWordIds.includes(id))
+        );
+      }
+      setHearts((prev) => Math.min(5, prev + 1));
+      return;
+    }
 
     if (!completedLessons.includes(lesson.id)) {
       setCompletedLessons((prev) => [...prev, lesson.id]);
@@ -418,6 +472,12 @@ export default function App() {
               setLang={setLang}
             />
 
+            {qrBannerMsg && (
+              <div className="mx-4 mt-3 p-3 rounded-2xl bg-emerald-500 text-white text-xs font-duo font-bold text-center shadow-md">
+                {qrBannerMsg}
+              </div>
+            )}
+
             <main className="flex-1 pb-24 md:pb-12">
               {activeTab === 'path' && (
                 <DuoPath
@@ -426,6 +486,8 @@ export default function App() {
                   unlockedChests={unlockedChests}
                   onUnlockChest={handleUnlockChest}
                   lang={lang}
+                  mistakeWords={mistakeWords}
+                  learnedWords={learnedWords}
                 />
               )}
 
@@ -434,6 +496,8 @@ export default function App() {
                   lang={lang}
                   learnedIds={learnedWords}
                   onUpdateLearnedIds={setLearnedWords}
+                  mistakeIds={mistakeWords}
+                  onUpdateMistakeIds={setMistakeWords}
                   onAwardXP={(amount) => {
                     handleAwardXP(amount);
                     if (hearts < 5) setHearts((prev) => Math.min(5, prev + 1));
@@ -492,6 +556,7 @@ export default function App() {
                 gems={gems}
                 setGems={setGems}
                 onFinishLesson={handleFinishLesson}
+                onRecordMistake={handleRecordMistake}
                 onClose={() => setActiveLesson(null)}
                 lang={lang}
               />

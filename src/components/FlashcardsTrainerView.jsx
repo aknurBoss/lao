@@ -19,8 +19,11 @@ export default function FlashcardsTrainerView({
   lang = 'ru',
   learnedIds = [],
   onUpdateLearnedIds,
+  mistakeWords = [],
+  onUpdateMistakeWords,
 }) {
   const t = UI_TEXT[lang]?.cards || UI_TEXT.ru.cards;
+  const isRu = lang === 'ru';
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [reverseMode, setReverseMode] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -29,16 +32,21 @@ export default function FlashcardsTrainerView({
 
   const filteredWords = useMemo(() => {
     if (selectedCategory === 'all') return VOCAB_WORDS;
+    if (selectedCategory === 'mistakes') {
+      const list = VOCAB_WORDS.filter((w) => mistakeWords.includes(w.id));
+      return list.length > 0 ? list : VOCAB_WORDS;
+    }
     if (selectedCategory === 'unlearned') {
       const list = VOCAB_WORDS.filter((w) => !learnedIds.includes(w.id));
       return list.length > 0 ? list : VOCAB_WORDS;
     }
     return VOCAB_WORDS.filter((w) => w.category === selectedCategory);
-  }, [selectedCategory, learnedIds]);
+  }, [selectedCategory, learnedIds, mistakeWords]);
 
   const rawWord = filteredWords[currentIndex % filteredWords.length] || VOCAB_WORDS[0];
   const currentWord = getWordDisplay(rawWord, lang);
   const isWordLearned = learnedIds.includes(currentWord.id);
+  const isMistakeWord = mistakeWords.includes(currentWord.id);
 
   const handlePlayAudio = (e, rate = 0.85) => {
     if (e) e.stopPropagation();
@@ -54,7 +62,15 @@ export default function FlashcardsTrainerView({
         const updated = [...learnedIds, currentWord.id];
         if (onUpdateLearnedIds) onUpdateLearnedIds(updated);
       }
+      if (isMistakeWord && onUpdateMistakeWords) {
+        onUpdateMistakeWords(mistakeWords.filter((id) => id !== currentWord.id));
+      }
       if (onAwardXP) onAwardXP(5);
+    } else {
+      // Mark for SRS / Mistakes review if user wants to repeat again
+      if (!isMistakeWord && onUpdateMistakeWords) {
+        onUpdateMistakeWords([...mistakeWords, currentWord.id]);
+      }
     }
 
     setIsFlipped(false);
@@ -98,6 +114,21 @@ export default function FlashcardsTrainerView({
           }`}
         >
           {t.all} ({VOCAB_WORDS.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedCategory('mistakes');
+            setCurrentIndex(0);
+            setIsFlipped(false);
+          }}
+          className={`px-3.5 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+            selectedCategory === 'mistakes'
+              ? 'bg-rose-500 text-white shadow-xs'
+              : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300'
+          }`}
+        >
+          🛠️ {isRu ? 'Ошибки / Повтор' : 'Mistakes / SRS'} ({mistakeWords.length})
         </button>
         <button
           type="button"
@@ -172,12 +203,21 @@ export default function FlashcardsTrainerView({
         <div className="flex items-center justify-between">
           <span
             className={`text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${
-              isWordLearned
+              isMistakeWord
+                ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300'
+                : isWordLearned
                 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300'
                 : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
             }`}
           >
-            {isWordLearned ? t.learnedBadge : t.inProgressBadge} • {currentWord.displayTone}
+            {isMistakeWord
+              ? isRu
+                ? '🛠️ На повторе (SRS)'
+                : '🛠️ Needs Review (SRS)'
+              : isWordLearned
+              ? t.learnedBadge
+              : t.inProgressBadge}{' '}
+            • {currentWord.displayTone}
           </span>
 
           {/* Audio Normal & Slow Buttons */}

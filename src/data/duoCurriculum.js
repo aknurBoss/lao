@@ -1,4 +1,5 @@
 // Bilingual (RU & EN) Duolingo-style Course Curriculum for Lao (100% Transcription-First)
+import { VOCAB_WORDS } from './vocabData.js';
 
 export const DUO_UNITS_RU = [
   {
@@ -636,6 +637,267 @@ export const DUO_UNITS_RU = [
             audioWord: 'ຢຸດຢູ່ນີ້ແດ່ ຂອບໃຈ',
             english: 'Остановите здесь, пожалуйста, спасибо!',
             tip: 'Ют = стоп, ю ни = здесь.',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'unit7',
+    number: 7,
+    title: 'Фрукты, Шейки и Лаосские Блюда',
+    laoTitle: 'Мак-му́анг, Кха́о-пи́ак & Нам-па́н',
+    description: 'Заказывайте манговый шейк без сахара, лаосский суп кхао-пиак и хрустящие багеты.',
+    color: 'orange',
+    gradient: 'from-orange-500 to-amber-600',
+    borderColor: 'border-orange-600',
+    chestRewardGems: 55,
+    guideWords: [
+      { trans: 'Мак-му́анг', mean: 'Манго', hint: 'Мак = фрукт/плод' },
+      { trans: 'Мак-пха́о', mean: 'Кокос', hint: 'Нам мак-пхао = кокосовая вода' },
+      { trans: 'Нам-па́н', mean: 'Фруктовый шейк со льдом', hint: 'Пан = взбивать в блендере' },
+      { trans: 'Кха́о-пи́ак се́н', mean: 'Суп с домашней лапшой', hint: 'Главный суп Лаоса' },
+      { trans: 'Бо сай нам-та́н', mean: 'Без сахара!', hint: 'Незаменимо для шейков и кофе' },
+      { trans: 'Кин-тье́', mean: 'Вегетарианское (без мяса)', hint: 'Постная еда' },
+    ],
+    lessons: [
+      {
+        id: 'u7_l1',
+        title: 'Манго, Кокос и Шейки без сахара',
+        laoTitle: 'Мак-му́анг, Мак-пха́о & Бо сай нам-та́н',
+        icon: 'Utensils',
+        xpReward: 25,
+        gemReward: 15,
+        exercises: [
+          {
+            type: 'multiple_choice',
+            prompt: 'Как по-лаосски называется «Манго»?',
+            laoPrompt: 'Мак-му́анг',
+            audioWord: 'ໝາກມ່ວງ',
+            options: [
+              { text: 'Мак-му́анг', meaning: 'Манго', audio: 'ໝາກມ່ວງ', isCorrect: true },
+              { text: 'Мак-пха́о', meaning: 'Кокос', audio: 'ໝາກພ້າວ', isCorrect: false },
+              { text: 'Мак-ку́ай', meaning: 'Банан', audio: 'ໝາກກ້ວຍ', isCorrect: false },
+            ],
+            tip: 'Все фрукты начинаются со слова «мак» (плод). Мак-муанг = манго!',
+          },
+          {
+            type: 'match_pairs',
+            prompt: 'Соедините тропические фрукты и напитки',
+            pairs: [
+              { lao: 'Мак-му́анг', english: 'Манго' },
+              { lao: 'Мак-пха́о', english: 'Кокос' },
+              { lao: 'Мак-мо́', english: 'Арбуз' },
+              { lao: 'Нам-па́н', english: 'Фруктовый шейк' },
+            ],
+          },
+          {
+            type: 'multiple_choice',
+            prompt: 'Как попросить сделать напиток «Без сахара»?',
+            laoPrompt: 'Бо сай нам-та́н',
+            audioWord: 'ບໍ່ໃສ່ນ້ຳຕານ',
+            options: [
+              { text: 'Бо сай нам-та́н', meaning: 'Без сахара (не класть сахар)', audio: 'ບໍ່ໃສ່ນ້ຳຕານ', isCorrect: true },
+              { text: 'Бо пхет', meaning: 'Не остро', audio: 'ບໍ່ເຜັດ', isCorrect: false },
+              { text: 'Кин-тье́', meaning: 'Вегетарианское', audio: 'ກິນເຈ', isCorrect: false },
+            ],
+            tip: 'Бо (не) + сай (класть) + нам-тан (сахар).',
+          },
+          {
+            type: 'speaking_repeat',
+            prompt: 'Произнесите вслух заказ «Без сахара»:',
+            targetLao: 'Бо сай нам-та́н',
+            targetRom: 'bo sai nam-taan',
+            audioWord: 'ບໍ່ໃສ່ນ້ຳຕານ',
+            english: 'Без сахара!',
+            tip: 'Скажите это перед тем, как продавец начнёт взбивать шейк.',
+          },
+        ],
+      },
+      {
+        id: 'u7_l2',
+        title: 'Лаосские супы, багет и гриль',
+        laoTitle: 'Кха́о-пи́ак се́н & Кха́о-пха́т',
+        icon: 'Utensils',
+        xpReward: 25,
+        gemReward: 15,
+        exercises: [
+          {
+            type: 'multiple_choice',
+            prompt: 'Что такое «Кха́о-пи́ак се́н»?',
+            laoPrompt: 'Кха́о-пи́ак се́н',
+            audioWord: 'ເຂົ້າປຽກເສັ້ນ',
+            options: [
+              { text: 'Традиционный суп с домашней лапшой', meaning: 'Кха́о-пи́ак се́н', audio: 'ເຂົ້າປຽກເສັ້ນ', isCorrect: true },
+              { text: 'Жареный рис', meaning: 'Кха́о-пха́т', audio: 'ເຂົ້າຜັດ', isCorrect: false },
+              { text: 'Фруктовый шейк', meaning: 'Нам-па́н', audio: 'ນ້ຳປັ່ນ', isCorrect: false },
+            ],
+            tip: 'Самый популярный и сытный не острый суп в Лаосе!',
+          },
+          {
+            type: 'match_pairs',
+            prompt: 'Соедините популярные блюда',
+            pairs: [
+              { lao: 'Кха́о-пха́т', english: 'Жареный рис' },
+              { lao: 'Кха́о-тьи́ па-те́', english: 'Лаосский багет-сэндвич' },
+              { lao: 'Кин-тье́', english: 'Вегетарианское' },
+              { lao: 'И́м лэ́о', english: 'Я наелся!' },
+            ],
+          },
+          {
+            type: 'speaking_repeat',
+            prompt: 'Повторите название лаосского супа:',
+            targetLao: 'Кха́о-пи́ак се́н',
+            targetRom: 'khao-piak sen',
+            audioWord: 'ເຂົ້າປຽກເສັ້ນ',
+            english: 'Лаосский суп с лапшой',
+            tip: 'Кхао-пиак сен подают на завтрак и обед по всей стране.',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'unit8',
+    number: 8,
+    title: 'Аренда Байка, Отель и Жильё',
+    laoTitle: 'Са́о лот-тьа́к & Ла-ха́т вай-фа́й',
+    description: 'Арендуйте скутер, спрашивайте цену за сутки, свободные номера и пароль от Wi-Fi.',
+    color: 'indigo',
+    gradient: 'from-indigo-500 to-blue-600',
+    borderColor: 'border-indigo-600',
+    chestRewardGems: 60,
+    guideWords: [
+      { trans: 'Лот-тьа́к', mean: 'Мотобайк / Скутер', hint: 'Главный транспорт для поездок' },
+      { trans: 'Са́о лот-тьа́к', mean: 'Арендовать мотобайк', hint: 'Сао = брать в аренду' },
+      { trans: 'Мы-ны́нг тха́о-дай?', mean: 'Сколько стоит за 1 день?', hint: 'Мы-нынг = один день' },
+      { trans: 'Ми хо́нг ва́нг бо?', mean: 'Есть свободные номера?', hint: 'Хонг = комната' },
+      { trans: 'Ла-ха́т вай-фа́й', mean: 'Пароль от Wi-Fi', hint: 'Ла-хат = код/пароль' },
+      { trans: 'Пхе́ лэ́о', mean: 'Сломалось / Не работает', hint: 'Если что-то вышло из строя' },
+    ],
+    lessons: [
+      {
+        id: 'u8_l1',
+        title: 'Аренда скутера и Отель',
+        laoTitle: 'Са́о лот-тьа́к & Ми хо́нг ва́нг бо?',
+        icon: 'Navigation',
+        xpReward: 30,
+        gemReward: 20,
+        exercises: [
+          {
+            type: 'multiple_choice',
+            prompt: 'Как по-лаосски сказать «Арендовать мотобайк»?',
+            laoPrompt: 'Са́о лот-тьа́к',
+            audioWord: 'ເຊົ່າລົດຈັກ',
+            options: [
+              { text: 'Са́о лот-тьа́к', meaning: 'Арендовать мотобайк', audio: 'ເຊົ່າລົດຈັກ', isCorrect: true },
+              { text: 'Ла-ха́т вай-фа́й', meaning: 'Пароль от Wi-Fi', audio: 'ລະຫັດໄວໄຟ', isCorrect: false },
+              { text: 'Нам-ха́ун', meaning: 'Горячая вода', audio: 'ນ້ຳຮ້ອນ', isCorrect: false },
+            ],
+            tip: 'Сао (арендовать) + лот-тьак (мотобайк).',
+          },
+          {
+            type: 'multiple_choice',
+            prompt: 'Что означает вопрос «Мы-ны́нг тха́о-дай?»',
+            laoPrompt: 'Мы-ны́нг тха́о-дай?',
+            audioWord: 'ມື້ໜຶ່ງເທົ່າໃດ',
+            options: [
+              { text: 'Сколько стоит за 1 день?', meaning: 'Мы-ны́нг тха́о-дай?', audio: 'ມື້ໜຶ່ງເທົ່າໃດ', isCorrect: true },
+              { text: 'Где заправка?', meaning: 'Пам-нам-ман ю сай?', audio: 'ນ້ຳມັນ ປ້ຳນ້ຳມັນ', isCorrect: false },
+              { text: 'Есть свободные номера?', meaning: 'Ми хонг ванг бо?', audio: 'ມີຫ້ອງວ່າງບໍ່', isCorrect: false },
+            ],
+            tip: 'Мы (день) + нынг (один) + тхао-дай (сколько стоит).',
+          },
+          {
+            type: 'match_pairs',
+            prompt: 'Соедините слова для отеля и аренды',
+            pairs: [
+              { lao: 'Лот-тьа́к', english: 'Мотобайк' },
+              { lao: 'Му́ак-кан-нок', english: 'Шлем' },
+              { lao: 'Ла-ха́т вай-фа́й', english: 'Пароль от Wi-Fi' },
+              { lao: 'Ка-тьэ́', english: 'Ключ' },
+            ],
+          },
+          {
+            type: 'speaking_repeat',
+            prompt: 'Спросите про свободный номер в отеле:',
+            targetLao: 'Ми хо́нг ва́нг бо?',
+            targetRom: 'mii hong waang bo?',
+            audioWord: 'ມີຫ້ອງວ່າງບໍ່',
+            english: 'Есть свободные номера?',
+            tip: 'Кхо бенг хонг дэ = Можно посмотреть комнату?',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'unit9',
+    number: 9,
+    title: 'Аптека, Здоровье и Время',
+    laoTitle: 'Ха́н-кха́й-я, ТЬеп & Тон-са́о',
+    description: 'Объясните симптомы в аптеке, назовите время суток и выучите тёплые фразы для друзей.',
+    color: 'emerald',
+    gradient: 'from-emerald-600 to-teal-700',
+    borderColor: 'border-emerald-700',
+    chestRewardGems: 70,
+    guideWords: [
+      { trans: 'Ха́н-кха́й-я', mean: 'Аптека', hint: 'Магазин лекарств' },
+      { trans: 'Кхо́й бо са-ба́й', mean: 'Мне плохо / Я заболел', hint: 'Бо са-бай = нездоровится' },
+      { trans: 'ТЬеп ху́а / ТЬеп тхо́нг', mean: 'Болит голова / Болит живот', hint: 'ТЬеп = болит' },
+      { trans: 'Я кэ́-тьеп', mean: 'Обезболивающее', hint: 'Лекарство от боли' },
+      { trans: 'Фон ток', mean: 'Идёт дождь', hint: 'Фон = дождь' },
+      { trans: 'Му́ан ла́й!', mean: 'Очень весело! / Кайф!', hint: 'Главное слово радости' },
+    ],
+    lessons: [
+      {
+        id: 'u9_l1',
+        title: 'В аптеке и у врача',
+        laoTitle: 'Ха́н-кха́й-я & Кхо́й бо са-ба́й',
+        icon: 'Heart',
+        xpReward: 30,
+        gemReward: 20,
+        exercises: [
+          {
+            type: 'multiple_choice',
+            prompt: 'Как сказать в аптеке или врачу «Мне плохо / Я заболел»?',
+            laoPrompt: 'Кхо́й бо са-ба́й',
+            audioWord: 'ຂ້ອຍບໍ່ສະບາຍ',
+            options: [
+              { text: 'Кхо́й бо са-ба́й', meaning: 'Мне нездоровится', audio: 'ຂ້ອຍບໍ່ສະບາຍ', isCorrect: true },
+              { text: 'Са-ба́й-ди', meaning: 'Здравствуйте / Всё отлично', audio: 'ສະບາຍດີ', isCorrect: false },
+              { text: 'Му́ан ла́й', meaning: 'Очень весело', audio: 'ມ່ວນຫຼາຍ', isCorrect: false },
+            ],
+            tip: 'Са-бай = хорошо/здоров, Бо са-бай = нездоров!',
+          },
+          {
+            type: 'match_pairs',
+            prompt: 'Соедините слова для аптеки и здоровья',
+            pairs: [
+              { lao: 'Ха́н-кха́й-я', english: 'Аптека' },
+              { lao: 'ТЬеп ху́а', english: 'Болит голова' },
+              { lao: 'ТЬеп тхо́нг', english: 'Болит живот' },
+              { lao: 'Я кэ́-тьеп', english: 'Обезболивающее' },
+            ],
+          },
+          {
+            type: 'match_pairs',
+            prompt: 'Соедините природу, время и эмоции',
+            pairs: [
+              { lao: 'Фон ток', english: 'Идёт дождь' },
+              { lao: 'Нам-то́к', english: 'Водопад' },
+              { lao: 'Тон-са́о', english: 'Утром' },
+              { lao: 'Му́ан ла́й!', english: 'Очень весело!' },
+            ],
+          },
+          {
+            type: 'speaking_repeat',
+            prompt: 'Скажите по-лаосски «Очень весело! / Отлично провели время!»: ',
+            targetLao: 'Му́ан ла́й!',
+            targetRom: 'muan lai!',
+            audioWord: 'ມ່ວນຫຼາຍ',
+            english: 'Очень весело! / Супер!',
+            tip: 'Лаосцы обожают слово «Муан» — оно отражает радость жизни!',
           },
         ],
       },
@@ -1284,6 +1546,267 @@ export const DUO_UNITS_EN = [
       },
     ],
   },
+  {
+    id: 'unit7',
+    number: 7,
+    title: 'Tropical Fruits, Shakes & Dishes',
+    laoTitle: 'maak-muang, khao-piak & nam-pan',
+    description: 'Order sugar-free mango shakes, traditional khao-piak noodle soup, and crispy baguettes.',
+    color: 'orange',
+    gradient: 'from-orange-500 to-amber-600',
+    borderColor: 'border-orange-600',
+    chestRewardGems: 55,
+    guideWords: [
+      { trans: 'maak-muang', mean: 'Mango', hint: 'maak = fruit' },
+      { trans: 'maak-phao', mean: 'Coconut', hint: 'nam maak-phao = coconut water' },
+      { trans: 'nam-pan', mean: 'Blended fruit shake', hint: 'pan = blend with ice' },
+      { trans: 'khao-piak sen', mean: 'Lao noodle soup', hint: '#1 comfort soup in Laos' },
+      { trans: 'bo sai nam-taan', mean: 'No sugar!', hint: 'Essential for shakes & coffee' },
+      { trans: 'kin-jee', mean: 'Vegetarian / Vegan', hint: 'Plant-based food' },
+    ],
+    lessons: [
+      {
+        id: 'u7_l1',
+        title: 'Mango, Coconut & Sugar-Free Shakes',
+        laoTitle: 'maak-muang, maak-phao & bo sai nam-taan',
+        icon: 'Utensils',
+        xpReward: 25,
+        gemReward: 15,
+        exercises: [
+          {
+            type: 'multiple_choice',
+            prompt: 'How do you say "Mango" in Lao?',
+            laoPrompt: 'maak-muang',
+            audioWord: 'ໝາກມ່ວງ',
+            options: [
+              { text: 'maak-muang', meaning: 'Mango', audio: 'ໝາກມ່ວງ', isCorrect: true },
+              { text: 'maak-phao', meaning: 'Coconut', audio: 'ໝາກພ້າວ', isCorrect: false },
+              { text: 'maak-kuai', meaning: 'Banana', audio: 'ໝາກກ້ວຍ', isCorrect: false },
+            ],
+            tip: 'All fruits begin with "maak" (fruit). maak-muang = mango!',
+          },
+          {
+            type: 'match_pairs',
+            prompt: 'Match the fruits and drinks',
+            pairs: [
+              { lao: 'maak-muang', english: 'Mango' },
+              { lao: 'maak-phao', english: 'Coconut' },
+              { lao: 'maak-mo', english: 'Watermelon' },
+              { lao: 'nam-pan', english: 'Fruit shake' },
+            ],
+          },
+          {
+            type: 'multiple_choice',
+            prompt: 'How do you ask for "No sugar" in your shake or coffee?',
+            laoPrompt: 'bo sai nam-taan',
+            audioWord: 'ບໍ່ໃສ່ນ້ຳຕານ',
+            options: [
+              { text: 'bo sai nam-taan', meaning: 'No sugar (do not put sugar)', audio: 'ບໍ່ໃສ່ນ້ຳຕານ', isCorrect: true },
+              { text: 'bo phet', meaning: 'Not spicy', audio: 'ບໍ່ເຜັດ', isCorrect: false },
+              { text: 'kin-jee', meaning: 'Vegetarian', audio: 'ກິນເຈ', isCorrect: false },
+            ],
+            tip: 'bo (not) + sai (put) + nam-taan (sugar).',
+          },
+          {
+            type: 'speaking_repeat',
+            prompt: 'Practice saying "No sugar!":',
+            targetLao: 'bo sai nam-taan',
+            targetRom: 'bo sai nam-taan',
+            audioWord: 'ບໍ່ໃສ່ນ້ຳຕານ',
+            english: 'No sugar!',
+            tip: 'Say this right when ordering your fruit smoothie.',
+          },
+        ],
+      },
+      {
+        id: 'u7_l2',
+        title: 'Noodle Soup, Baguettes & Grill',
+        laoTitle: 'khao-piak sen & khao-phat',
+        icon: 'Utensils',
+        xpReward: 25,
+        gemReward: 15,
+        exercises: [
+          {
+            type: 'multiple_choice',
+            prompt: 'What is "khao-piak sen"?',
+            laoPrompt: 'khao-piak sen',
+            audioWord: 'ເຂົ້າປຽກເສັ້ນ',
+            options: [
+              { text: 'Traditional Lao handmade noodle soup', meaning: 'khao-piak sen', audio: 'ເຂົ້າປຽກເສັ້ນ', isCorrect: true },
+              { text: 'Fried rice', meaning: 'khao-phat', audio: 'ເຂົ້າຜັດ', isCorrect: false },
+              { text: 'Fruit smoothie', meaning: 'nam-pan', audio: 'ນ້ຳປັ່ນ', isCorrect: false },
+            ],
+            tip: 'The most beloved comfort noodle soup across Laos!',
+          },
+          {
+            type: 'match_pairs',
+            prompt: 'Match the popular dishes',
+            pairs: [
+              { lao: 'khao-phat', english: 'Fried rice' },
+              { lao: 'khao-jii pa-te', english: 'Lao baguette sandwich' },
+              { lao: 'kin-jee', english: 'Vegetarian' },
+              { lao: 'im laeo', english: "I'm full!" },
+            ],
+          },
+          {
+            type: 'speaking_repeat',
+            prompt: 'Repeat the name of the famous Lao noodle soup:',
+            targetLao: 'khao-piak sen',
+            targetRom: 'khao-piak sen',
+            audioWord: 'ເຂົ້າປຽກເສັ້ນ',
+            english: 'Lao noodle soup',
+            tip: 'Served everywhere for breakfast and lunch.',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'unit8',
+    number: 8,
+    title: 'Motorbike Rental, Hotel & Wi-Fi',
+    laoTitle: 'sao lot-jak & la-hat wai-fai',
+    description: 'Rent a scooter, ask the daily rate, check for vacant hotel rooms, and get the Wi-Fi password.',
+    color: 'indigo',
+    gradient: 'from-indigo-500 to-blue-600',
+    borderColor: 'border-indigo-600',
+    chestRewardGems: 60,
+    guideWords: [
+      { trans: 'lot-jak', mean: 'Motorbike / Scooter', hint: 'Best way to explore' },
+      { trans: 'sao lot-jak', mean: 'Rent a motorbike', hint: 'sao = rent' },
+      { trans: 'meu-neung thao-dai?', mean: 'How much per day?', hint: 'meu-neung = 1 day' },
+      { trans: 'mii hong waang bo?', mean: 'Do you have a vacant room?', hint: 'hong = room' },
+      { trans: 'la-hat wai-fai', mean: 'Wi-Fi password', hint: 'la-hat = password/code' },
+      { trans: 'phe laeo', mean: 'Broken / Not working', hint: 'Useful for hotel repairs' },
+    ],
+    lessons: [
+      {
+        id: 'u8_l1',
+        title: 'Scooter Rental & Hotel Rooms',
+        laoTitle: 'sao lot-jak & mii hong waang bo?',
+        icon: 'Navigation',
+        xpReward: 30,
+        gemReward: 20,
+        exercises: [
+          {
+            type: 'multiple_choice',
+            prompt: 'How do you say "Rent a motorbike" in Lao?',
+            laoPrompt: 'sao lot-jak',
+            audioWord: 'ເຊົ່າລົດຈັກ',
+            options: [
+              { text: 'sao lot-jak', meaning: 'Rent a motorbike', audio: 'ເຊົ່າລົດຈັກ', isCorrect: true },
+              { text: 'la-hat wai-fai', meaning: 'Wi-Fi password', audio: 'ລະຫັດໄວໄຟ', isCorrect: false },
+              { text: 'nam-haun', meaning: 'Hot water', audio: 'ນ້ຳຮ້ອນ', isCorrect: false },
+            ],
+            tip: 'sao (rent) + lot-jak (motorbike).',
+          },
+          {
+            type: 'multiple_choice',
+            prompt: 'What does "meu-neung thao-dai?" mean?',
+            laoPrompt: 'meu-neung thao-dai?',
+            audioWord: 'ມື້ໜຶ່ງເທົ່າໃດ',
+            options: [
+              { text: 'How much per day?', meaning: 'meu-neung thao-dai?', audio: 'ມື້ໜຶ່ງເທົ່າໃດ', isCorrect: true },
+              { text: 'Where is the gas station?', meaning: 'pam-nam-man yuu sai?', audio: 'ນ້ຳມັນ ປ້ຳນ້ຳມັນ', isCorrect: false },
+              { text: 'Do you have a vacant room?', meaning: 'mii hong waang bo?', audio: 'ມີຫ້ອງວ່າງບໍ່', isCorrect: false },
+            ],
+            tip: 'meu (day) + neung (one) + thao-dai (how much).',
+          },
+          {
+            type: 'match_pairs',
+            prompt: 'Match the rental and hotel words',
+            pairs: [
+              { lao: 'lot-jak', english: 'Motorbike' },
+              { lao: 'muak-kan-nok', english: 'Helmet' },
+              { lao: 'la-hat wai-fai', english: 'Wi-Fi password' },
+              { lao: 'ka-jae', english: 'Key' },
+            ],
+          },
+          {
+            type: 'speaking_repeat',
+            prompt: 'Ask if a hotel room is available:',
+            targetLao: 'mii hong waang bo?',
+            targetRom: 'mii hong waang bo?',
+            audioWord: 'ມີຫ້ອງວ່າງບໍ່',
+            english: 'Do you have a vacant room?',
+            tip: 'kho beng hong dae = Can I see the room first?',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'unit9',
+    number: 9,
+    title: 'Pharmacy, Health & Nature',
+    laoTitle: 'haan-khaai-yaa, jep & muan lai',
+    description: 'Explain symptoms at a pharmacy, talk about weather and waterfalls, and celebrate with locals.',
+    color: 'emerald',
+    gradient: 'from-emerald-600 to-teal-700',
+    borderColor: 'border-emerald-700',
+    chestRewardGems: 70,
+    guideWords: [
+      { trans: 'haan-khaai-yaa', mean: 'Pharmacy', hint: 'Medicine shop' },
+      { trans: 'khoi bo sa-baai', mean: 'I feel sick / unwell', hint: 'bo sa-baai = not well' },
+      { trans: 'jep hua / jep thong', mean: 'Headache / Stomachache', hint: 'jep = hurts' },
+      { trans: 'yaa kae-jep', mean: 'Painkiller', hint: 'Medicine to relieve pain' },
+      { trans: 'fon tok', mean: 'It is raining', hint: 'fon = rain' },
+      { trans: 'muan lai!', mean: 'So much fun! / Awesome!', hint: '#1 word for joy in Laos' },
+    ],
+    lessons: [
+      {
+        id: 'u9_l1',
+        title: 'At the Pharmacy & Weather',
+        laoTitle: 'haan-khaai-yaa & khoi bo sa-baai',
+        icon: 'Heart',
+        xpReward: 30,
+        gemReward: 20,
+        exercises: [
+          {
+            type: 'multiple_choice',
+            prompt: 'How do you tell a pharmacist or doctor "I feel unwell / sick"?',
+            laoPrompt: 'khoi bo sa-baai',
+            audioWord: 'ຂ້ອຍບໍ່ສະບາຍ',
+            options: [
+              { text: 'khoi bo sa-baai', meaning: 'I feel unwell', audio: 'ຂ້ອຍບໍ່ສະບາຍ', isCorrect: true },
+              { text: 'sa-baai-dii', meaning: 'Hello / Doing well', audio: 'ສະບາຍດີ', isCorrect: false },
+              { text: 'muan lai', meaning: 'So much fun', audio: 'ມ່ວນຫຼາຍ', isCorrect: false },
+            ],
+            tip: 'sa-baai = well/healthy, bo sa-baai = unwell!',
+          },
+          {
+            type: 'match_pairs',
+            prompt: 'Match the health & pharmacy words',
+            pairs: [
+              { lao: 'haan-khaai-yaa', english: 'Pharmacy' },
+              { lao: 'jep hua', english: 'Headache' },
+              { lao: 'jep thong', english: 'Stomachache' },
+              { lao: 'yaa kae-jep', english: 'Painkiller' },
+            ],
+          },
+          {
+            type: 'match_pairs',
+            prompt: 'Match nature, time, and expressions',
+            pairs: [
+              { lao: 'fon tok', english: 'It is raining' },
+              { lao: 'nam-tok', english: 'Waterfall' },
+              { lao: 'ton-sao', english: 'In the morning' },
+              { lao: 'muan lai!', english: 'So much fun!' },
+            ],
+          },
+          {
+            type: 'speaking_repeat',
+            prompt: 'Say "So much fun! / Awesome time!" in Lao:',
+            targetLao: 'muan lai!',
+            targetRom: 'muan lai!',
+            audioWord: 'ມ່ວນຫຼາຍ',
+            english: 'So much fun! / Awesome!',
+            tip: 'Lao people love the word "muan" — it captures the joyful spirit of Laos!',
+          },
+        ],
+      },
+    ],
+  },
 ];
 
 export const DUO_UNITS = DUO_UNITS_RU;
@@ -1291,3 +1814,103 @@ export const DUO_UNITS = DUO_UNITS_RU;
 export function getDuoUnits(lang = 'ru') {
   return lang === 'en' ? DUO_UNITS_EN : DUO_UNITS_RU;
 }
+
+// Dynamically build a personalized SRS / Mistakes Review Lesson
+export function buildMistakesReviewLesson(wordIds = [], lang = 'ru', isSrsMode = false) {
+  const isRu = lang === 'ru';
+  let targetWords = VOCAB_WORDS.filter((w) => wordIds.includes(w.id));
+  if (targetWords.length === 0) {
+    targetWords = VOCAB_WORDS.slice(0, 6);
+  } else {
+    targetWords = targetWords.slice(0, 8);
+  }
+
+  const getTrans = (w) => (isRu ? w.ruTrans : w.latTrans);
+  const getMean = (w) => (isRu ? w.ruMeaning : w.enMeaning || w.ruMeaning);
+  const getHint = (w) => (isRu ? w.pronunciationHint : w.enHint || w.pronunciationHint);
+
+  const exercises = [];
+
+  targetWords.forEach((word, idx) => {
+    const distractors = VOCAB_WORDS.filter((w) => w.id !== word.id)
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 2);
+
+    const options = [
+      {
+        text: getTrans(word),
+        meaning: getMean(word),
+        audio: word.lao,
+        wordId: word.id,
+        isCorrect: true,
+      },
+      ...distractors.map((d) => ({
+        text: getTrans(d),
+        meaning: getMean(d),
+        audio: d.lao,
+        wordId: d.id,
+        isCorrect: false,
+      })),
+    ].sort(() => Math.random() - 0.5);
+
+    if (idx % 2 === 0) {
+      exercises.push({
+        type: 'multiple_choice',
+        wordId: word.id,
+        prompt: isRu
+          ? `Как по-лаосски сказать «${getMean(word)}»?`
+          : `How do you say "${getMean(word)}" in Lao?`,
+        laoPrompt: getTrans(word),
+        audioWord: word.lao,
+        options,
+        tip: getHint(word),
+      });
+    } else {
+      exercises.push({
+        type: 'speaking_repeat',
+        wordId: word.id,
+        prompt: isRu
+          ? 'Послушайте и повторите вслух для закрепления:'
+          : 'Listen and repeat aloud to lock into memory:',
+        targetLao: getTrans(word),
+        targetRom: word.latTrans,
+        audioWord: word.lao,
+        english: getMean(word),
+        tip: getHint(word),
+      });
+    }
+  });
+
+  if (targetWords.length >= 2) {
+    const pairWords = targetWords.slice(0, 4);
+    exercises.push({
+      type: 'match_pairs',
+      prompt: isRu
+        ? 'Соедините повторяемые слова с переводом'
+        : 'Match the reviewed words with their meanings',
+      pairs: pairWords.map((w) => ({
+        lao: getTrans(w),
+        english: getMean(w),
+      })),
+    });
+  }
+
+  return {
+    id: isSrsMode ? 'srs_review_session' : 'mistakes_review_session',
+    isReviewLesson: true,
+    isSrsMode,
+    reviewedWordIds: targetWords.map((w) => w.id),
+    title: isSrsMode
+      ? isRu
+        ? 'Умное интервальное повторение (SRS)'
+        : 'Smart Spaced Repetition (SRS)'
+      : isRu
+      ? 'Работа над ошибками'
+      : 'Mistakes Review',
+    laoTitle: isRu ? 'Повторение и закрепление слов' : 'Memory Reinforcement',
+    xpReward: 20,
+    gemReward: 10,
+    exercises,
+  };
+}
+

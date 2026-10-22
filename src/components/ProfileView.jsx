@@ -17,6 +17,10 @@ import {
   ShieldCheck,
   LogOut,
   Trash2,
+  QrCode,
+  Camera,
+  Bell,
+  Send,
 } from 'lucide-react';
 import { telegramService } from '../services/telegramService';
 import { syncService } from '../services/syncService';
@@ -54,6 +58,24 @@ export default function ProfileView({
   const [isSyncing, setIsSyncing] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [showMyQr, setShowMyQr] = useState(false);
+
+  // Study Reminders state
+  const [reminderEnabled, setReminderEnabled] = useState(() => {
+    try {
+      return localStorage.getItem('laolingo_reminder_enabled') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [reminderTime, setReminderTime] = useState(() => {
+    try {
+      return localStorage.getItem('laolingo_reminder_time') || '19:00';
+    } catch {
+      return '19:00';
+    }
+  });
+  const [reminderStatusMsg, setReminderStatusMsg] = useState('');
 
   const otherSessions = (sessions || []).filter((s) => s && s.id !== currentSessionId);
 
@@ -104,6 +126,51 @@ export default function ProfileView({
     } catch (e) {}
   };
 
+  const handleScanLaptopQr = async () => {
+    telegramService.hapticImpact('medium');
+    const scannedText = await telegramService.scanQrCode(
+      isRu
+        ? 'Наведите камеру на QR-код на экране ноутбука'
+        : 'Point camera at the QR code on your laptop screen'
+    );
+
+    if (!scannedText) {
+      setShowMyQr((prev) => !prev);
+      return;
+    }
+
+    try {
+      let challengeId = scannedText.trim();
+      if (scannedText.includes('approveQr=')) {
+        const url = new URL(scannedText);
+        challengeId = url.searchParams.get('approveQr') || challengeId;
+      }
+
+      if (challengeId.startsWith('QR-')) {
+        setIsSyncing(true);
+        await syncService.approveLaptopQrChallenge(challengeId, currentStateForLink);
+        telegramService.hapticNotification('success');
+        confetti({ particleCount: 60, spread: 60 });
+        setSyncStatusMsg(
+          isRu
+            ? '✅ Вход на ноутбуке по QR-коду успешно подтверждён!'
+            : '✅ Laptop QR Login approved!'
+        );
+        setTimeout(() => {
+          onSyncWithCode(syncId);
+        }, 1200);
+      } else if (scannedText.includes('sync=')) {
+        await onSyncWithCode(scannedText);
+      }
+    } catch (e) {
+      setSyncStatusMsg(
+        isRu ? 'Не удалось распознать QR-код' : 'Could not recognize QR code'
+      );
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleRefreshSessions = async () => {
     telegramService.hapticImpact('medium');
     setIsSyncing(true);
@@ -117,6 +184,74 @@ export default function ProfileView({
       setIsSyncing(false);
     }
   };
+
+  const handleToggleReminder = async () => {
+    telegramService.hapticImpact('light');
+    const nextVal = !reminderEnabled;
+    setReminderEnabled(nextVal);
+    try {
+      localStorage.setItem('laolingo_reminder_enabled', String(nextVal));
+    } catch {}
+
+    if (nextVal) {
+      if (typeof window !== 'undefined' && 'Notification' in window) {
+        try {
+          const perm = await Notification.requestPermission();
+          if (perm === 'granted') {
+            new Notification('🐘 LaoLingo', {
+              body: isRu
+                ? `Ежедневное напоминание включено на ${reminderTime}! Са-ба́й-ди!`
+                : `Daily study reminder set for ${reminderTime}! Sa-baai-dii!`,
+            });
+          }
+        } catch {}
+      }
+      setReminderStatusMsg(
+        isRu
+          ? `✅ Напоминание установлено на ${reminderTime} каждый день`
+          : `✅ Daily reminder set for ${reminderTime}`
+      );
+    } else {
+      setReminderStatusMsg(
+        isRu ? 'Напоминания отключены' : 'Reminders disabled'
+      );
+    }
+  };
+
+  const handleSelectReminderTime = (timeStr) => {
+    telegramService.hapticSelection();
+    setReminderTime(timeStr);
+    setReminderEnabled(true);
+    try {
+      localStorage.setItem('laolingo_reminder_time', timeStr);
+      localStorage.setItem('laolingo_reminder_enabled', 'true');
+    } catch {}
+    setReminderStatusMsg(
+      isRu
+        ? `⏰ Время напоминания: ${timeStr}`
+        : `⏰ Reminder time set to ${timeStr}`
+    );
+  };
+
+  const handleSendTelegramReminderNote = () => {
+    telegramService.hapticNotification('success');
+    const appUrl =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}${window.location.pathname}`
+        : 'https://laolingo.pages.dev';
+    const text = isRu
+      ? `🐘 Напоминание LaoLingo (${reminderTime}): Пора пройти 5-минутный урок лаосского языка по транскрипции! 🔥 Мой ударный режим: ${streak} дн., опыт: ${xp} XP.`
+      : `🐘 LaoLingo Reminder (${reminderTime}): Time for a 5-minute spoken Lao lesson! 🔥 My streak: ${streak} days, XP: ${xp}.`;
+    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(
+      appUrl
+    )}&text=${encodeURIComponent(text)}`;
+    window.open(shareUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const magicLoginUrl = syncService.createMagicSyncLink(currentStateForLink);
+  const myQrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(
+    magicLoginUrl
+  )}`;
 
   const achievements = [
     {
@@ -251,7 +386,7 @@ export default function ProfileView({
           </button>
         </div>
 
-        {/* Telegram Login Code to enter on Laptop */}
+        {/* Telegram Login Code & QR Actions */}
         <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2.5">
           <div className="flex items-center justify-between gap-2">
             <div>
@@ -278,6 +413,41 @@ export default function ProfileView({
               <span>{copiedCode ? t.copied : isRu ? 'Код' : 'Copy'}</span>
             </button>
           </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={handleScanLaptopQr}
+              className="py-2.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-duo font-bold text-xs flex items-center justify-center gap-1.5 btn-3d border-emerald-700 cursor-pointer transition"
+            >
+              <Camera className="w-4 h-4 shrink-0" />
+              <span>{isRu ? 'Сканировать QR' : 'Scan Laptop QR'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowMyQr((prev) => !prev)}
+              className="py-2.5 px-3 rounded-xl bg-white dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-duo font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer hover:border-sky-400 transition"
+            >
+              <QrCode className="w-4 h-4 text-sky-500 shrink-0" />
+              <span>{isRu ? 'Мой QR-код' : 'My QR Code'}</span>
+            </button>
+          </div>
+
+          {showMyQr && (
+            <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex flex-col items-center text-center space-y-2">
+              <img
+                src={myQrImageUrl}
+                alt="Account Login QR"
+                className="w-36 h-36 object-contain rounded-lg bg-white p-1"
+              />
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                {isRu
+                  ? 'Отсканируйте этот QR-код на другом устройстве для мгновенного входа в аккаунт'
+                  : 'Scan this QR code on another device for instant login'}
+              </span>
+            </div>
+          )}
 
           <button
             type="button"
@@ -376,8 +546,8 @@ export default function ProfileView({
               </p>
               <p className="text-[11px] text-slate-400 mt-0.5">
                 {isRu
-                  ? `Когда вы войдёте на ноутбуке по коду ${syncId}, ноутбук отобразится здесь.`
-                  : `When you sign in on your laptop with code ${syncId}, it will appear here.`}
+                  ? `Когда вы войдёте на ноутбуке по QR-коду или коду ${syncId}, ноутбук отобразится здесь.`
+                  : `When you sign in on your laptop via QR or code ${syncId}, it will appear here.`}
               </p>
             </div>
           ) : (
@@ -435,6 +605,75 @@ export default function ProfileView({
         {syncStatusMsg && (
           <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 text-center pt-1">
             {syncStatusMsg}
+          </p>
+        )}
+      </div>
+
+      {/* STUDY REMINDERS & TELEGRAM NOTIFICATIONS */}
+      <div className="bg-white dark:bg-slate-900 border-2 border-amber-200 dark:border-amber-900/50 rounded-3xl p-5 shadow-xs space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <Bell className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-duo font-black text-base text-slate-900 dark:text-white">
+                {isRu ? 'Напоминания об учёбе' : 'Daily Study Reminders'}
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                {isRu
+                  ? 'Чтобы не потерять ударный режим 🔥 в Telegram'
+                  : 'Never lose your daily study streak 🔥'}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleToggleReminder}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-duo font-black transition cursor-pointer ${
+              reminderEnabled
+                ? 'bg-emerald-500 text-white'
+                : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+            }`}
+          >
+            {reminderEnabled ? (isRu ? 'ВКЛ' : 'ON') : isRu ? 'ВЫКЛ' : 'OFF'}
+          </button>
+        </div>
+
+        <div className="grid grid-cols-4 gap-2">
+          {['09:00', '13:00', '19:00', '21:00'].map((tSlot) => (
+            <button
+              key={tSlot}
+              type="button"
+              onClick={() => handleSelectReminderTime(tSlot)}
+              className={`py-2 rounded-xl font-duo font-bold text-xs border-2 transition cursor-pointer ${
+                reminderTime === tSlot && reminderEnabled
+                  ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
+                  : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-amber-400'
+              }`}
+            >
+              {tSlot}
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={handleSendTelegramReminderNote}
+          className="w-full py-2.5 px-4 rounded-2xl bg-sky-500 hover:bg-sky-600 text-white font-duo font-bold text-xs flex items-center justify-center gap-2 btn-3d border-sky-700 cursor-pointer transition"
+        >
+          <Send className="w-4 h-4" />
+          <span>
+            {isRu
+              ? 'Отправить памятку урока в Избранное Telegram'
+              : 'Send Study Reminder to Telegram Saved Messages'}
+          </span>
+        </button>
+
+        {reminderStatusMsg && (
+          <p className="text-xs font-bold text-amber-600 dark:text-amber-400 text-center">
+            {reminderStatusMsg}
           </p>
         )}
       </div>

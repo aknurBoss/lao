@@ -42,6 +42,7 @@ export function encodeStateBase64(stateObj) {
       u: stateObj.unlockedChests || [],
       w: stateObj.learnedWords || [],
       p: stateObj.savedPhrases || [],
+      m: stateObj.mistakeWords || [],
       l: stateObj.lang || 'ru',
       t: stateObj.updatedAt || Date.now(),
       uProf: stateObj.tgProfile || null,
@@ -69,6 +70,7 @@ export function decodeStateBase64(encoded) {
       unlockedChests: Array.isArray(compact.u) ? compact.u : [],
       learnedWords: Array.isArray(compact.w) ? compact.w : [],
       savedPhrases: Array.isArray(compact.p) ? compact.p : [],
+      mistakeWords: Array.isArray(compact.m) ? compact.m : [],
       lang: compact.l === 'en' ? 'en' : 'ru',
       updatedAt: Number(compact.t) || Date.now(),
       tgProfile: compact.uProf || null,
@@ -91,6 +93,9 @@ export function mergeStates(localState, remoteState) {
   const unlockedChests = unionArray(localState.unlockedChests, remoteState.unlockedChests);
   const learnedWords = unionArray(localState.learnedWords, remoteState.learnedWords);
   const savedPhrases = unionArray(localState.savedPhrases, remoteState.savedPhrases);
+  const mistakeWords = remoteState.updatedAt > (localState.updatedAt || 0)
+    ? (remoteState.mistakeWords || [])
+    : unionArray(localState.mistakeWords, remoteState.mistakeWords);
   const revokedSessionIds = unionArray(
     localState.revokedSessionIds,
     remoteState.revokedSessionIds
@@ -121,6 +126,7 @@ export function mergeStates(localState, remoteState) {
     unlockedChests,
     learnedWords,
     savedPhrases,
+    mistakeWords,
     lang: remoteNewer ? (remoteState.lang || localState.lang) : (localState.lang || remoteState.lang),
     updatedAt: Math.max(localState.updatedAt || 0, remoteState.updatedAt || 0),
     tgProfile: remoteState.tgProfile || localState.tgProfile || null,
@@ -558,6 +564,66 @@ class SyncService {
     ]);
 
     return merged;
+  }
+
+  // Approve a Laptop QR Code Login from Telegram
+  async approveLaptopQrChallenge(qrTextOrChallengeId, currentState) {
+    let challengeId = String(qrTextOrChallengeId || '').trim();
+    if (challengeId.includes('approveQr=')) {
+      try {
+        const u = new URL(challengeId);
+        challengeId = u.searchParams.get('approveQr') || challengeId;
+      } catch (e) {}
+    }
+    challengeId = challengeId.replace(/[^A-Z0-9_-]/gi, '');
+    if (!challengeId || !this.syncId) return false;
+
+    const stateWithSession = this.ensureSessionInState(currentState);
+    const encoded = encodeStateBase64(stateWithSession);
+    const payload = JSON.stringify({
+      syncId: this.syncId,
+      data: encoded,
+    });
+
+    try {
+      const res = await fetch(`${NTFY_BASE}/laolingo_qr_${challengeId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+        body: payload,
+      });
+      return res.ok;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Listen on Laptop for QR Code approval from Telegram phone
+  listenForQrChallengeApproval(challengeId, onApproved) {
+    if (typeof window === 'undefined' || typeof EventSource === 'undefined') return () => {};
+    const safeId = String(challengeId).replace(/[^A-Z0-9_-]/gi, '');
+    let es = null;
+    try {
+      es = new EventSource(`${NTFY_BASE}/laolingo_qr_${safeId}/sse`);
+      es.onmessage = (event) => {
+        try {
+          const item = JSON.parse(event.data);
+          if (item && item.event === 'message' && item.message) {
+            const parsed = JSON.parse(item.message);
+            if (parsed && parsed.syncId && onApproved) {
+              onApproved(parsed.syncId, parsed.data);
+            }
+          }
+        } catch (e) {}
+      };
+    } catch (e) {}
+
+    return () => {
+      if (es) {
+        try {
+          es.close();
+        } catch (e) {}
+      }
+    };
   }
 }
 
