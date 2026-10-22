@@ -13,6 +13,10 @@ import {
   Link2,
   Globe,
   Laptop,
+  Smartphone,
+  ShieldCheck,
+  LogOut,
+  Trash2,
 } from 'lucide-react';
 import { telegramService } from '../services/telegramService';
 import { syncService } from '../services/syncService';
@@ -32,18 +36,37 @@ export default function ProfileView({
   lang = 'ru',
   setLang,
   syncId,
+  sessions = [],
   onSyncWithCode,
+  onTerminateSession,
+  onTerminateAllOtherSessions,
+  onLogoutLaptop,
   currentStateForLink,
 }) {
   const t = UI_TEXT[lang]?.profile || UI_TEXT.ru.profile;
+  const isRu = lang === 'ru';
   const tgUser = telegramService.getUser();
-  const isInsideTelegram = telegramService.isInsideTelegram();
+  const isMasterTelegram = telegramService.isInsideTelegram();
+  const currentSessionId = syncService.getSessionId();
+  const currentDevice = telegramService.getDeviceInfo();
 
-  const [inputCode, setInputCode] = useState('');
   const [syncStatusMsg, setSyncStatusMsg] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+
+  const otherSessions = (sessions || []).filter((s) => s && s.id !== currentSessionId);
+
+  const formatLastActive = (ts) => {
+    if (!ts) return isRu ? 'только что' : 'just now';
+    const diffSec = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+    if (diffSec < 60) return isRu ? 'онлайн • только что' : 'online • just now';
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return isRu ? `${diffMin} мин. назад` : `${diffMin}m ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return isRu ? `${diffHr} ч. назад` : `${diffHr}h ago`;
+    return new Date(ts).toLocaleDateString();
+  };
 
   const handleBuyHearts = () => {
     if (gems < 50 || hearts >= 5) return;
@@ -81,31 +104,15 @@ export default function ProfileView({
     } catch (e) {}
   };
 
-  const handleManualSync = async () => {
+  const handleRefreshSessions = async () => {
     telegramService.hapticImpact('medium');
     setIsSyncing(true);
     setSyncStatusMsg('');
     try {
-      let cleanInput = inputCode.trim();
-      let directData = null;
-
-      // If user pasted a full magic URL into the input box, extract both ?sync= and ?data=
-      if (cleanInput.includes('sync=') || cleanInput.includes('data=')) {
-        try {
-          const url = new URL(cleanInput);
-          const codeFromUrl = url.searchParams.get('sync');
-          const dataFromUrl = url.searchParams.get('data');
-          if (codeFromUrl) cleanInput = codeFromUrl;
-          if (dataFromUrl) directData = dataFromUrl;
-        } catch (e) {}
-      }
-
-      await onSyncWithCode(cleanInput || syncId, directData);
-      setInputCode('');
-      setSyncStatusMsg(t.syncSuccess);
-      telegramService.hapticNotification('success');
-    } catch (e) {
-      setSyncStatusMsg('Error');
+      await onSyncWithCode(syncId);
+      setSyncStatusMsg(
+        isRu ? 'Список сеансов и прогресс обновлены!' : 'Sessions and progress updated!'
+      );
     } finally {
       setIsSyncing(false);
     }
@@ -164,14 +171,26 @@ export default function ProfileView({
               ? t.defaultName
               : `${tgUser.firstName} ${tgUser.lastName || ''}`.trim()}
           </h2>
-          <span className="text-xs font-semibold text-slate-400">
-            {tgUser.username || '@laolingo'}
+          <span className="text-xs font-semibold text-slate-400 block">
+            {tgUser.username || `@${syncId}`}
           </span>
-          {isInsideTelegram && (
-            <span className="mt-1.5 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 text-[10px] font-bold">
-              {t.openedInTelegram}
-            </span>
-          )}
+
+          <span
+            className={`mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold ${
+              isMasterTelegram
+                ? 'bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300'
+                : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            {isMasterTelegram
+              ? isRu
+                ? 'Главный аккаунт (Telegram)'
+                : 'Master Account (Telegram)'
+              : isRu
+              ? `Сеанс ноутбука (${syncId})`
+              : `Laptop Session (${syncId})`}
+          </span>
         </div>
 
         {/* Real Statistics */}
@@ -200,6 +219,224 @@ export default function ProfileView({
             <span className="text-[10px] text-slate-400">{t.lessonsLabel}</span>
           </div>
         </div>
+      </div>
+
+      {/* ACTIVE SESSIONS & DEVICES PAGE (СЕАНСЫ И УСТРОЙСТВА) */}
+      <div className="bg-white dark:bg-slate-900 border-2 border-sky-200 dark:border-sky-900/60 rounded-3xl p-5 shadow-xs space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-2xl bg-sky-100 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+              <Smartphone className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-duo font-black text-base text-slate-900 dark:text-white">
+                {isRu ? 'Сеансы и устройства' : 'Active Sessions & Devices'}
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                {isRu
+                  ? 'Управление входами с ноутбука через Telegram'
+                  : 'Manage laptop logins via your Telegram account'}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleRefreshSessions}
+            disabled={isSyncing}
+            className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 cursor-pointer transition"
+            title={isRu ? 'Обновить сеансы' : 'Refresh sessions'}
+          >
+            <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin text-sky-500' : ''}`} />
+          </button>
+        </div>
+
+        {/* Telegram Login Code to enter on Laptop */}
+        <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                {isRu
+                  ? 'Код для входа с ноутбука (Telegram ID):'
+                  : 'Login Code for Laptop (Telegram ID):'}
+              </span>
+              <span className="font-mono font-black text-lg text-emerald-600 dark:text-emerald-400">
+                {syncId}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleCopyCode}
+              className="px-3 py-2 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 hover:bg-slate-100 transition cursor-pointer"
+            >
+              {copiedCode ? (
+                <Check className="w-4 h-4 text-emerald-500" />
+              ) : (
+                <Copy className="w-4 h-4" />
+              )}
+              <span>{copiedCode ? t.copied : isRu ? 'Код' : 'Copy'}</span>
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleCopyMagicLink}
+            className="w-full py-2.5 px-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-duo font-bold text-xs flex items-center justify-center gap-2 btn-3d border-sky-700 cursor-pointer transition"
+          >
+            {copiedLink ? <Check className="w-4 h-4" /> : <Link2 className="w-4 h-4" />}
+            <span>
+              {copiedLink
+                ? t.copied
+                : isRu
+                ? 'Скопировать ссылку быстрого входа для ноутбука'
+                : 'Copy 1-Click Login Link for Laptop'}
+            </span>
+          </button>
+        </div>
+
+        {/* 1. THIS DEVICE */}
+        <div className="space-y-2">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
+            {isRu ? 'Текущий сеанс' : 'This Device'}
+          </span>
+          <div className="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                {isMasterTelegram ? (
+                  <Smartphone className="w-5 h-5" />
+                ) : (
+                  <Laptop className="w-5 h-5" />
+                )}
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
+                    {currentDevice.name}
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500 text-white">
+                    {isMasterTelegram
+                      ? isRu
+                        ? 'Главный (Telegram)'
+                        : 'Master (Telegram)'
+                      : isRu
+                      ? 'Это устройство'
+                      : 'This device'}
+                  </span>
+                </div>
+                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold block mt-0.5">
+                  🟢 {isRu ? 'В сети • Сейчас' : 'Online • Now'}
+                </span>
+              </div>
+            </div>
+
+            {!isMasterTelegram && onLogoutLaptop && (
+              <button
+                type="button"
+                onClick={onLogoutLaptop}
+                className="px-3 py-2 rounded-xl bg-rose-100 hover:bg-rose-200 dark:bg-rose-950/60 text-rose-600 dark:text-rose-300 text-xs font-bold flex items-center gap-1 cursor-pointer shrink-0 transition"
+                title={isRu ? 'Выйти из сеанса на ноутбуке' : 'Log out on this laptop'}
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>{isRu ? 'Выйти' : 'Log out'}</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 2. OTHER ACTIVE SESSIONS (CONNECTED LAPTOPS / BROWSERS) */}
+        <div className="space-y-2 pt-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              {isRu
+                ? `Другие подключённые сеансы (${otherSessions.length})`
+                : `Other Active Sessions (${otherSessions.length})`}
+            </span>
+
+            {isMasterTelegram && otherSessions.length > 0 && onTerminateAllOtherSessions && (
+              <button
+                type="button"
+                onClick={() => {
+                  telegramService.hapticNotification('warning');
+                  onTerminateAllOtherSessions();
+                }}
+                className="text-[11px] font-bold text-rose-500 hover:underline cursor-pointer"
+              >
+                {isRu ? 'Завершить все' : 'Terminate all'}
+              </button>
+            )}
+          </div>
+
+          {otherSessions.length === 0 ? (
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-dashed border-slate-200 dark:border-slate-700 text-center">
+              <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                {isRu
+                  ? 'Нет других активных сеансов'
+                  : 'No other active device sessions'}
+              </p>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                {isRu
+                  ? `Когда вы войдёте на ноутбуке по коду ${syncId}, ноутбук отобразится здесь.`
+                  : `When you sign in on your laptop with code ${syncId}, it will appear here.`}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {otherSessions.map((sess) => (
+                <div
+                  key={sess.id}
+                  className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-sky-100 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+                      {sess.isMaster ? (
+                        <Smartphone className="w-5 h-5" />
+                      ) : (
+                        <Laptop className="w-5 h-5" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-white">
+                          {sess.deviceName || 'Laptop Browser'}
+                        </span>
+                        {sess.isMaster && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-200">
+                            Telegram
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] text-slate-400 block mt-0.5">
+                        🟢 {formatLastActive(sess.lastActive)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {isMasterTelegram && onTerminateSession && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        telegramService.hapticImpact('medium');
+                        onTerminateSession(sess.id);
+                      }}
+                      className="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-1 cursor-pointer shrink-0 transition"
+                      title={isRu ? 'Завершить этот сеанс' : 'Terminate this session'}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>{isRu ? 'Завершить' : 'End'}</span>
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {syncStatusMsg && (
+          <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 text-center pt-1">
+            {syncStatusMsg}
+          </p>
+        )}
       </div>
 
       {/* Language Selector (RU / EN) */}
@@ -242,84 +479,6 @@ export default function ProfileView({
           >
             🇬🇧 English
           </button>
-        </div>
-      </div>
-
-      {/* Telegram <-> Laptop Cloud Sync Card */}
-      <div className="bg-white dark:bg-slate-900 border-2 border-emerald-200 dark:border-emerald-900/60 rounded-3xl p-5 shadow-xs space-y-4">
-        <div className="flex items-start gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-            <Laptop className="w-6 h-6" />
-          </div>
-          <div>
-            <h3 className="font-duo font-black text-base text-slate-900 dark:text-white">
-              {t.syncTitle}
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
-              {t.syncDesc}
-            </p>
-          </div>
-        </div>
-
-        {/* Current Sync Code */}
-        <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-              {t.yourSyncCode}
-            </span>
-            <span className="font-mono font-black text-base sm:text-lg text-emerald-600 dark:text-emerald-400">
-              {syncId}
-            </span>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleCopyCode}
-            className="px-3 py-2 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 hover:bg-slate-100 transition cursor-pointer"
-          >
-            {copiedCode ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-            <span>{copiedCode ? t.copied : 'Copy'}</span>
-          </button>
-        </div>
-
-        {/* 1-Click Magic Link for Laptop */}
-        <button
-          type="button"
-          onClick={handleCopyMagicLink}
-          className="w-full py-3 px-4 rounded-2xl bg-sky-500 hover:bg-sky-600 text-white font-duo font-bold text-xs sm:text-sm flex items-center justify-center gap-2 btn-3d border-sky-700 cursor-pointer transition"
-        >
-          {copiedLink ? <Check className="w-4 h-4" /> : <Link2 className="w-4 h-4" />}
-          <span>{copiedLink ? t.copied : t.copySyncLink}</span>
-        </button>
-
-        {/* Link another device code or manual sync */}
-        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
-          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block">
-            {t.enterOtherCode}
-          </span>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={inputCode}
-              onChange={(e) => setInputCode(e.target.value)}
-              placeholder={t.codePlaceholder}
-              className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-            <button
-              type="button"
-              onClick={handleManualSync}
-              disabled={isSyncing}
-              className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-duo font-bold text-xs flex items-center gap-1.5 btn-3d border-emerald-700 cursor-pointer shrink-0"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-              <span>{t.linkBtn}</span>
-            </button>
-          </div>
-          {syncStatusMsg && (
-            <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-              {syncStatusMsg}
-            </p>
-          )}
         </div>
       </div>
 

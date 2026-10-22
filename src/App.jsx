@@ -7,6 +7,7 @@ import FlashcardsTrainerView from './components/FlashcardsTrainerView';
 import PhrasebookView from './components/PhrasebookView';
 import LeaderboardView from './components/LeaderboardView';
 import ProfileView from './components/ProfileView';
+import TelegramAuthScreen from './components/TelegramAuthScreen';
 import { telegramService } from './services/telegramService';
 import { syncService, mergeStates } from './services/syncService';
 
@@ -14,6 +15,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('path'); // 'path' | 'cards' | 'dictionary' | 'leaderboard' | 'profile'
   const [activeLesson, setActiveLesson] = useState(null);
   const [syncId, setSyncId] = useState(() => syncService.getSyncId());
+  const [isAuthenticated, setIsAuthenticated] = useState(() => syncService.isAuthenticated());
 
   // Bilingual support: 'ru' | 'en'
   const [lang, setLang] = useState(() => {
@@ -101,11 +103,48 @@ export default function App() {
     }
   });
 
+  const [sessions, setSessions] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('laolingo_sessions') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  const [revokedSessionIds, setRevokedSessionIds] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('laolingo_revoked_sessions') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
   const isInitialMount = useRef(true);
   const suppressNextPush = useRef(false);
 
+  const handleSessionRevoked = () => {
+    syncService.logoutLocalSession();
+    setSyncId('');
+    setIsAuthenticated(false);
+  };
+
   const applyMergedState = (merged, fromRemoteLive = false) => {
     if (!merged) return;
+
+    if (merged.__sessionRevoked) {
+      handleSessionRevoked();
+      return;
+    }
+
+    if (
+      !telegramService.isInsideTelegram() &&
+      Array.isArray(merged.revokedSessionIds) &&
+      merged.revokedSessionIds.includes(syncService.getSessionId())
+    ) {
+      handleSessionRevoked();
+      return;
+    }
+
     if (fromRemoteLive) {
       suppressNextPush.current = true;
     }
@@ -128,29 +167,46 @@ export default function App() {
     if (Array.isArray(merged.savedPhrases)) {
       setSavedPhrases(merged.savedPhrases);
     }
+    if (Array.isArray(merged.sessions)) {
+      setSessions(merged.sessions);
+    }
+    if (Array.isArray(merged.revokedSessionIds)) {
+      setRevokedSessionIds(merged.revokedSessionIds);
+    }
     if (merged.lang === 'en' || merged.lang === 'ru') {
       setLang(merged.lang);
     }
   };
 
+  const getCurrentSnapshot = () => ({
+    xp,
+    streak,
+    hearts,
+    gems,
+    streakFreezeActive,
+    completedLessons,
+    unlockedChests,
+    learnedWords,
+    savedPhrases,
+    sessions,
+    revokedSessionIds,
+    lang,
+    updatedAt: Number(localStorage.getItem('laolingo_updated_at') || Date.now()),
+  });
+
   // Initial sync on load (URL Magic Link + Telegram CloudStorage + Cloud KV)
   useEffect(() => {
-    const currentSnapshot = {
-      xp,
-      streak,
-      hearts,
-      gems,
-      streakFreezeActive,
-      completedLessons,
-      unlockedChests,
-      learnedWords,
-      savedPhrases,
-      lang,
-      updatedAt: Number(localStorage.getItem('laolingo_updated_at') || 0),
-    };
-
+    const currentSnapshot = getCurrentSnapshot();
     const urlState = syncService.consumeUrlSyncData();
-    setSyncId(syncService.getSyncId());
+    const activeSyncId = syncService.getSyncId();
+    setSyncId(activeSyncId);
+    const authed = syncService.isAuthenticated();
+    setIsAuthenticated(authed);
+
+    if (!authed) {
+      isInitialMount.current = false;
+      return;
+    }
 
     const baseState = urlState ? mergeStates(currentSnapshot, urlState) : currentSnapshot;
     if (urlState) {
@@ -167,7 +223,18 @@ export default function App() {
 
   // Subscribe to real-time SSE updates for the active syncId
   useEffect(() => {
+    if (!isAuthenticated || !syncId) return;
+
     const unsubscribe = syncService.subscribeLiveUpdates((remoteState) => {
+      if (
+        !telegramService.isInsideTelegram() &&
+        Array.isArray(remoteState.revokedSessionIds) &&
+        remoteState.revokedSessionIds.includes(syncService.getSessionId())
+      ) {
+        handleSessionRevoked();
+        return;
+      }
+
       const localSnapshot = {
         xp: Number(localStorage.getItem('laolingo_xp') || 0),
         streak: Number(localStorage.getItem('laolingo_streak') || 0),
@@ -178,6 +245,8 @@ export default function App() {
         unlockedChests: JSON.parse(localStorage.getItem('laolingo_unlocked_chests') || '[]'),
         learnedWords: JSON.parse(localStorage.getItem('laolingo_learned_words') || '[]'),
         savedPhrases: JSON.parse(localStorage.getItem('laolingo_saved_phrases') || '[]'),
+        sessions: JSON.parse(localStorage.getItem('laolingo_sessions') || '[]'),
+        revokedSessionIds: JSON.parse(localStorage.getItem('laolingo_revoked_sessions') || '[]'),
         lang: localStorage.getItem('laolingo_lang') || 'ru',
         updatedAt: Number(localStorage.getItem('laolingo_updated_at') || 0),
       };
@@ -185,7 +254,7 @@ export default function App() {
       applyMergedState(merged, true);
     });
     return () => unsubscribe();
-  }, [syncId]);
+  }, [syncId, isAuthenticated]);
 
   // Save to localStorage and sync to Cloud whenever state updates
   useEffect(() => {
@@ -199,11 +268,13 @@ export default function App() {
     localStorage.setItem('laolingo_unlocked_chests', JSON.stringify(unlockedChests));
     localStorage.setItem('laolingo_learned_words', JSON.stringify(learnedWords));
     localStorage.setItem('laolingo_saved_phrases', JSON.stringify(savedPhrases));
+    localStorage.setItem('laolingo_sessions', JSON.stringify(sessions));
+    localStorage.setItem('laolingo_revoked_sessions', JSON.stringify(revokedSessionIds));
 
     const now = Date.now();
     localStorage.setItem('laolingo_updated_at', now.toString());
 
-    if (isInitialMount.current) return;
+    if (!isAuthenticated || isInitialMount.current) return;
     if (suppressNextPush.current) {
       suppressNextPush.current = false;
       return;
@@ -219,6 +290,8 @@ export default function App() {
       unlockedChests,
       learnedWords,
       savedPhrases,
+      sessions,
+      revokedSessionIds,
       lang,
       updatedAt: now,
     };
@@ -230,6 +303,7 @@ export default function App() {
 
     return () => clearTimeout(timer);
   }, [
+    isAuthenticated,
     lang,
     hearts,
     gems,
@@ -240,6 +314,8 @@ export default function App() {
     unlockedChests,
     learnedWords,
     savedPhrases,
+    sessions,
+    revokedSessionIds,
   ]);
 
   useEffect(() => {
@@ -276,37 +352,55 @@ export default function App() {
   };
 
   const handleSyncWithCode = async (targetCode, directData = null) => {
-    const currentSnapshot = {
-      xp,
-      streak,
-      hearts,
-      gems,
-      streakFreezeActive,
-      completedLessons,
-      unlockedChests,
-      learnedWords,
-      savedPhrases,
-      lang,
-      updatedAt: Date.now(),
-    };
+    const currentSnapshot = getCurrentSnapshot();
     const merged = await syncService.syncAll(currentSnapshot, targetCode, directData);
     setSyncId(syncService.getSyncId());
+    setIsAuthenticated(true);
     applyMergedState(merged, true);
   };
 
-  const currentStateForLink = {
-    xp,
-    streak,
-    hearts,
-    gems,
-    streakFreezeActive,
-    completedLessons,
-    unlockedChests,
-    learnedWords,
-    savedPhrases,
-    lang,
-    updatedAt: Date.now(),
+  const handleRegisterMasterTelegram = async (tgUsername) => {
+    telegramService.setAsMasterTelegram(tgUsername);
+    const newSyncId = syncService.initSyncId();
+    setSyncId(newSyncId);
+    setIsAuthenticated(true);
+    const currentSnapshot = getCurrentSnapshot();
+    const merged = await syncService.syncAll(currentSnapshot, newSyncId);
+    applyMergedState(merged, true);
   };
+
+  const handleTerminateSession = async (targetSessionId) => {
+    const updated = await syncService.terminateSession(
+      targetSessionId,
+      getCurrentSnapshot()
+    );
+    applyMergedState(updated, true);
+  };
+
+  const handleTerminateAllOtherSessions = async () => {
+    const updated = await syncService.terminateAllOtherSessions(getCurrentSnapshot());
+    applyMergedState(updated, true);
+  };
+
+  const handleLogoutLaptop = async () => {
+    const mySessionId = syncService.getSessionId();
+    await syncService.terminateSession(mySessionId, getCurrentSnapshot());
+    handleSessionRevoked();
+  };
+
+  // Require Telegram Authentication before using the app
+  if (!isAuthenticated) {
+    return (
+      <TelegramAuthScreen
+        lang={lang}
+        setLang={setLang}
+        onLoginWithTelegramCode={handleSyncWithCode}
+        onRegisterMasterTelegram={handleRegisterMasterTelegram}
+      />
+    );
+  }
+
+  const currentStateForLink = getCurrentSnapshot();
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
@@ -380,7 +474,11 @@ export default function App() {
                   lang={lang}
                   setLang={setLang}
                   syncId={syncId}
+                  sessions={sessions}
                   onSyncWithCode={handleSyncWithCode}
+                  onTerminateSession={handleTerminateSession}
+                  onTerminateAllOtherSessions={handleTerminateAllOtherSessions}
+                  onLogoutLaptop={handleLogoutLaptop}
                   currentStateForLink={currentStateForLink}
                 />
               )}
