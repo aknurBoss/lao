@@ -104,6 +104,14 @@ export default function App() {
     }
   });
 
+  const [srsData, setSrsData] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('laolingo_srs_data') || '{}');
+    } catch {
+      return {};
+    }
+  });
+
   const [savedPhrases, setSavedPhrases] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('laolingo_saved_phrases') || '[]');
@@ -176,6 +184,9 @@ export default function App() {
     if (Array.isArray(merged.mistakeWords)) {
       setMistakeWords(merged.mistakeWords);
     }
+    if (merged.srsData && typeof merged.srsData === 'object') {
+      setSrsData(merged.srsData);
+    }
     if (Array.isArray(merged.savedPhrases)) {
       setSavedPhrases(merged.savedPhrases);
     }
@@ -200,6 +211,7 @@ export default function App() {
     unlockedChests,
     learnedWords,
     mistakeWords,
+    srsData,
     savedPhrases,
     sessions,
     revokedSessionIds,
@@ -279,6 +291,7 @@ export default function App() {
         unlockedChests: JSON.parse(localStorage.getItem('laolingo_unlocked_chests') || '[]'),
         learnedWords: JSON.parse(localStorage.getItem('laolingo_learned_words') || '[]'),
         mistakeWords: JSON.parse(localStorage.getItem('laolingo_mistake_words') || '[]'),
+        srsData: JSON.parse(localStorage.getItem('laolingo_srs_data') || '{}'),
         savedPhrases: JSON.parse(localStorage.getItem('laolingo_saved_phrases') || '[]'),
         sessions: JSON.parse(localStorage.getItem('laolingo_sessions') || '[]'),
         revokedSessionIds: JSON.parse(localStorage.getItem('laolingo_revoked_sessions') || '[]'),
@@ -303,6 +316,7 @@ export default function App() {
     localStorage.setItem('laolingo_unlocked_chests', JSON.stringify(unlockedChests));
     localStorage.setItem('laolingo_learned_words', JSON.stringify(learnedWords));
     localStorage.setItem('laolingo_mistake_words', JSON.stringify(mistakeWords));
+    localStorage.setItem('laolingo_srs_data', JSON.stringify(srsData));
     localStorage.setItem('laolingo_saved_phrases', JSON.stringify(savedPhrases));
     localStorage.setItem('laolingo_sessions', JSON.stringify(sessions));
     localStorage.setItem('laolingo_revoked_sessions', JSON.stringify(revokedSessionIds));
@@ -326,6 +340,7 @@ export default function App() {
       unlockedChests,
       learnedWords,
       mistakeWords,
+      srsData,
       savedPhrases,
       sessions,
       revokedSessionIds,
@@ -351,6 +366,7 @@ export default function App() {
     unlockedChests,
     learnedWords,
     mistakeWords,
+    srsData,
     savedPhrases,
     sessions,
     revokedSessionIds,
@@ -372,6 +388,14 @@ export default function App() {
   const handleRecordMistake = (wordId) => {
     if (!wordId) return;
     setMistakeWords((prev) => (prev.includes(wordId) ? prev : [...prev, wordId]));
+    setSrsData((prev) => ({
+      ...prev,
+      [wordId]: {
+        box: 1,
+        lastReviewed: Date.now(),
+        nextReview: Date.now() + 60 * 1000,
+      },
+    }));
   };
 
   const handleFinishLesson = (lesson, isPerfect) => {
@@ -382,12 +406,25 @@ export default function App() {
     setGems((prev) => prev + gainedGems);
     setStreak((prev) => (prev === 0 ? 1 : prev));
 
-    // If this was a Smart Review / Mistakes Review lesson, clear reviewed mistakes and restore +1 heart
+    // If this was a Smart Review / Mistakes Review lesson, clear reviewed mistakes, advance SRS box, and restore +1 heart
     if (lesson.isReviewLesson) {
       if (Array.isArray(lesson.reviewedWordIds) && lesson.reviewedWordIds.length > 0) {
         setMistakeWords((prev) =>
           prev.filter((id) => !lesson.reviewedWordIds.includes(id))
         );
+        setSrsData((prev) => {
+          const next = { ...prev };
+          for (const wid of lesson.reviewedWordIds) {
+            const currentBox = next[wid]?.box || 1;
+            const newBox = Math.min(4, currentBox + 1);
+            next[wid] = {
+              box: newBox,
+              lastReviewed: Date.now(),
+              nextReview: Date.now() + 24 * 60 * 60 * 1000,
+            };
+          }
+          return next;
+        });
       }
       setHearts((prev) => Math.min(5, prev + 1));
       return;
@@ -496,8 +533,11 @@ export default function App() {
                   lang={lang}
                   learnedIds={learnedWords}
                   onUpdateLearnedIds={setLearnedWords}
-                  mistakeIds={mistakeWords}
-                  onUpdateMistakeIds={setMistakeWords}
+                  mistakeWords={mistakeWords}
+                  onUpdateMistakeWords={setMistakeWords}
+                  srsData={srsData}
+                  onUpdateSrsData={setSrsData}
+                  onStartLesson={(lesson) => setActiveLesson(lesson)}
                   onAwardXP={(amount) => {
                     handleAwardXP(amount);
                     if (hearts < 5) setHearts((prev) => Math.min(5, prev + 1));

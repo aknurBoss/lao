@@ -101,6 +101,17 @@ export function mergeStates(localState, remoteState) {
     remoteState.revokedSessionIds
   );
 
+  // Merge srsData by wordId, keeping entry with newer lastReviewed
+  const srsData = { ...(localState.srsData || {}) };
+  if (remoteState.srsData && typeof remoteState.srsData === 'object') {
+    for (const [wordId, remoteEntry] of Object.entries(remoteState.srsData)) {
+      const localEntry = srsData[wordId];
+      if (!localEntry || (remoteEntry?.lastReviewed || 0) >= (localEntry?.lastReviewed || 0)) {
+        srsData[wordId] = remoteEntry;
+      }
+    }
+  }
+
   // Merge sessions by session id, keeping newest lastActive and filtering out revoked ones
   const sessionMap = new Map();
   for (const s of [...(localState.sessions || []), ...(remoteState.sessions || [])]) {
@@ -127,6 +138,7 @@ export function mergeStates(localState, remoteState) {
     learnedWords,
     savedPhrases,
     mistakeWords,
+    srsData,
     lang: remoteNewer ? (remoteState.lang || localState.lang) : (localState.lang || remoteState.lang),
     updatedAt: Math.max(localState.updatedAt || 0, remoteState.updatedAt || 0),
     tgProfile: remoteState.tgProfile || localState.tgProfile || null,
