@@ -1,0 +1,242 @@
+import React, { useState } from 'react';
+import { DUO_UNITS } from '../data/duoCurriculum';
+import DuoMascot from './DuoMascot';
+import { Star, Lock, Check, Gift, BookOpen, Volume2, Turtle, X } from 'lucide-react';
+import { telegramService } from '../services/telegramService';
+import { audioEngine } from '../services/audioService';
+import confetti from 'canvas-confetti';
+
+export default function DuoPath({
+  completedLessons,
+  onStartLesson,
+  unlockedChests,
+  onUnlockChest,
+}) {
+  const [selectedGuidebookUnit, setSelectedGuidebookUnit] = useState(null);
+
+  const stepOffsets = [0, -38, 38, -25, 25, 0];
+
+  return (
+    <div className="max-w-xl mx-auto px-4 py-4 sm:py-6 space-y-12">
+      {DUO_UNITS.map((unit, unitIdx) => {
+        const isChestClaimed = unlockedChests.includes(unit.id);
+        const allUnitLessonsDone = unit.lessons.every((l) =>
+          completedLessons.includes(l.id)
+        );
+
+        return (
+          <div key={unit.id} className="space-y-6">
+            {/* Unit Header Banner */}
+            <div
+              className={`rounded-3xl p-5 sm:p-6 text-white shadow-lg bg-gradient-to-r ${unit.gradient} relative overflow-hidden`}
+            >
+              <div className="relative z-10 flex items-start justify-between gap-4">
+                <div>
+                  <span className="text-xs font-black uppercase tracking-wider text-white/80 font-duo">
+                    Раздел {unit.number}
+                  </span>
+                  <h2 className="text-xl sm:text-2xl font-black font-duo mt-0.5">
+                    {unit.title}
+                  </h2>
+                  <p className="text-sm font-bold text-white/95 mt-0.5">{unit.laoTitle}</p>
+                  <p className="text-xs text-white/85 mt-2 max-w-sm leading-relaxed">
+                    {unit.description}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedGuidebookUnit(unit)}
+                  className="px-3.5 py-2.5 rounded-2xl bg-white/20 hover:bg-white/30 backdrop-blur-md font-duo font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shrink-0"
+                >
+                  <BookOpen className="w-4 h-4" /> Слова раздела
+                </button>
+              </div>
+
+              <div className="absolute -right-4 -bottom-6 opacity-15 text-8xl font-bold pointer-events-none select-none">
+                {unit.number}
+              </div>
+            </div>
+
+            {/* Stepping Stones Path */}
+            <div className="relative flex flex-col items-center py-4 space-y-9">
+              {unit.lessons.map((lesson, idx) => {
+                const isCompleted = completedLessons.includes(lesson.id);
+                const isPrevCompleted =
+                  unitIdx === 0 && idx === 0
+                    ? true
+                    : idx === 0
+                    ? completedLessons.includes(
+                        DUO_UNITS[unitIdx - 1]?.lessons.slice(-1)[0]?.id
+                      )
+                    : completedLessons.includes(unit.lessons[idx - 1].id);
+
+                const isLocked = !isCompleted && !isPrevCompleted;
+                const isActive = !isCompleted && isPrevCompleted;
+                const offset = stepOffsets[idx % stepOffsets.length];
+
+                return (
+                  <div
+                    key={lesson.id}
+                    className="relative flex items-center justify-center"
+                    style={{ transform: `translateX(${offset}px)` }}
+                  >
+                    {isActive && (
+                      <span className="absolute w-24 h-24 rounded-full bg-emerald-400/30 dark:bg-emerald-500/20 animate-ping pointer-events-none" />
+                    )}
+
+                    <button
+                      type="button"
+                      disabled={isLocked}
+                      onClick={() => {
+                        telegramService.hapticImpact('medium');
+                        onStartLesson(lesson);
+                      }}
+                      className={`relative z-10 w-18 h-18 sm:w-20 sm:h-20 rounded-full flex flex-col items-center justify-center font-bold shadow-md transition-all duration-150 cursor-pointer active:scale-95 btn-3d ${
+                        isCompleted
+                          ? 'bg-amber-400 border-amber-600 text-amber-950'
+                          : isActive
+                          ? 'bg-emerald-500 border-emerald-700 text-white ring-4 ring-emerald-300 dark:ring-emerald-700'
+                          : 'bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-400 cursor-not-allowed'
+                      }`}
+                    >
+                      {isCompleted ? (
+                        <Check className="w-8 h-8 stroke-[3]" />
+                      ) : isActive ? (
+                        <Star className="w-8 h-8 fill-current animate-pulse" />
+                      ) : (
+                        <Lock className="w-6 h-6" />
+                      )}
+                    </button>
+
+                    <div className="absolute -bottom-6 whitespace-nowrap bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-0.5 rounded-full text-[11px] font-bold text-slate-700 dark:text-slate-200 shadow-xs pointer-events-none">
+                      {lesson.title}
+                    </div>
+
+                    {isActive && idx === 0 && (
+                      <div className="hidden sm:block absolute left-28 top-0 pointer-events-none">
+                        <DuoMascot
+                          mood="happy"
+                          size="sm"
+                          message="Жми на звезду! Учим слова по транскрипции!"
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Milestone Treasure Chest at Unit End */}
+              <div className="pt-4 flex flex-col items-center">
+                <button
+                  type="button"
+                  disabled={!allUnitLessonsDone || isChestClaimed}
+                  onClick={() => {
+                    telegramService.hapticNotification('success');
+                    confetti({ particleCount: 70, spread: 60 });
+                    onUnlockChest(unit);
+                  }}
+                  className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-md transition btn-3d cursor-pointer ${
+                    isChestClaimed
+                      ? 'bg-slate-100 dark:bg-slate-800 border-slate-200 text-slate-400 cursor-default'
+                      : allUnitLessonsDone
+                      ? 'bg-gradient-to-tr from-amber-400 to-yellow-500 border-amber-600 text-amber-950 animate-bounce'
+                      : 'bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-400 cursor-not-allowed'
+                  }`}
+                  title={
+                    isChestClaimed
+                      ? 'Сундук открыт'
+                      : allUnitLessonsDone
+                      ? 'Забрать алмазы!'
+                      : 'Пройдите уроки раздела, чтобы открыть сундук'
+                  }
+                >
+                  <Gift className="w-8 h-8" />
+                </button>
+                <span className="text-[11px] font-bold text-slate-400 mt-2 font-duo">
+                  {isChestClaimed ? 'Открыто (+💎)' : `Сундук раздела: +${unit.chestRewardGems} 💎`}
+                </span>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Guidebook Modal (Слова раздела со звуком) */}
+      {selectedGuidebookUnit && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl relative max-h-[85vh] overflow-y-auto space-y-4">
+            <button
+              type="button"
+              onClick={() => setSelectedGuidebookUnit(null)}
+              className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center">
+                <BookOpen className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 font-duo">
+                  Шпаргалка • Раздел {selectedGuidebookUnit.number}
+                </span>
+                <h3 className="text-xl font-black font-duo text-slate-900 dark:text-white">
+                  {selectedGuidebookUnit.title}
+                </h3>
+              </div>
+            </div>
+
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              Нажмите на любое слово, чтобы прослушать его произношение перед уроком:
+            </p>
+
+            <div className="space-y-2.5 pt-1">
+              {(selectedGuidebookUnit.guideWords || []).map((gw, i) => (
+                <div
+                  key={i}
+                  onClick={() => audioEngine.speakText(gw.trans.split('(')[0], 0.85)}
+                  className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 flex items-center justify-between gap-3 cursor-pointer hover:border-emerald-400 transition"
+                >
+                  <div>
+                    <span className="text-base font-black text-emerald-600 dark:text-emerald-400 block">
+                      {gw.trans}
+                    </span>
+                    <span className="text-sm font-bold text-slate-800 dark:text-white block">
+                      {gw.mean}
+                    </span>
+                    {gw.hint && (
+                      <span className="text-[11px] text-slate-400 block mt-0.5">
+                        💡 {gw.hint}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => audioEngine.speakText(gw.trans.split('(')[0], 0.55)}
+                      className="p-2 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 cursor-pointer"
+                      title="Медленно"
+                    >
+                      <Turtle className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => audioEngine.speakText(gw.trans.split('(')[0], 0.85)}
+                      className="p-2 rounded-xl bg-sky-500 text-white cursor-pointer"
+                      title="Слушать"
+                    >
+                      <Volume2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
