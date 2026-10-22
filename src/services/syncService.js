@@ -1,15 +1,13 @@
 // Cross-Device Synchronization Service (Telegram <-> Laptop Browser)
-// Supports:
-// 1. Telegram CloudStorage (automatic sync between Telegram Mobile & Telegram Desktop)
-// 2. Cloud KV Storage by Sync Code (sync between Telegram Mini App and Chrome/Safari/Edge on Laptop)
-// 3. Magic Sync Link (?sync=CODE&data=...) for instant 1-click transfer + linking
+// Uses CORS-enabled https://ntfy.sh pub/sub + cached state store (Access-Control-Allow-Origin: *)
+// + Live Server-Sent Events (SSE) real-time sync + Telegram CloudStorage + Magic Sync Link (?sync=CODE&data=...)
 
-import { telegramService } from './telegramService';
+import { telegramService } from './telegramService.js';
 
 const STORAGE_SYNC_ID_KEY = 'laolingo_sync_id';
 const CLOUD_STORAGE_STATE_KEY = 'laolingo_state_v2';
-const KV_API_BASE = 'https://keyvalue.immanuel.co/api/KeyVal';
-const KV_APP_KEY = '4s89d72k'; // public app namespace
+const NTFY_BASE = 'https://ntfy.sh';
+const TOPIC_PREFIX = 'laolingo_v2_sync_';
 
 function generateRandomCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -20,7 +18,7 @@ function generateRandomCode() {
   return res;
 }
 
-function encodeStateBase64(stateObj) {
+export function encodeStateBase64(stateObj) {
   try {
     const compact = {
       x: stateObj.xp || 0,
@@ -42,7 +40,7 @@ function encodeStateBase64(stateObj) {
   }
 }
 
-function decodeStateBase64(encoded) {
+export function decodeStateBase64(encoded) {
   try {
     const json = decodeURIComponent(atob(encoded));
     const compact = JSON.parse(json);
@@ -96,6 +94,7 @@ export function mergeStates(localState, remoteState) {
 class SyncService {
   constructor() {
     this.syncId = this.initSyncId();
+    this.eventSource = null;
   }
 
   initSyncId() {
@@ -142,6 +141,14 @@ class SyncService {
     return clean;
   }
 
+  getTopicName(code = this.syncId) {
+    const safe = String(code || this.syncId)
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9_-]/g, '');
+    return `${TOPIC_PREFIX}${safe}`;
+  }
+
   // Check if URL has ?data=... state payload and consume it once
   consumeUrlSyncData() {
     if (typeof window === 'undefined') return null;
@@ -155,7 +162,6 @@ class SyncService {
 
     if (dataParam) {
       const decoded = decodeStateBase64(dataParam);
-      // Clean URL query parameters without reloading page
       try {
         const cleanUrl = window.location.origin + window.location.pathname;
         window.history.replaceState({}, document.title, cleanUrl);
@@ -221,46 +227,113 @@ class SyncService {
     });
   }
 
-  // Push state to Cloud KV by syncId
+  // Push state to CORS-enabled ntfy.sh cloud channel by syncId
   async pushToCloudKV(stateObj) {
     try {
       const encoded = encodeStateBase64(stateObj);
       if (!encoded) return false;
-      const safeKey = `laolingo_${this.syncId.replace(/[^A-Z0-9_-]/gi, '')}`;
-      const res = await fetch(
-        `${KV_API_BASE}/UpdateValue/${KV_APP_KEY}/${safeKey}/${encodeURIComponent(encoded)}`,
-        { method: 'POST' }
-      );
+      const topic = this.getTopicName(this.syncId);
+      const res = await fetch(`${NTFY_BASE}/${topic}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=UTF-8',
+        },
+        body: encoded,
+      });
       return res.ok;
     } catch (e) {
       return false;
     }
   }
 
-  // Pull state from Cloud KV by syncId
+  // Pull state history from ntfy.sh cloud channel and merge all snapshots
   async pullFromCloudKV(customSyncId) {
     try {
       const targetId = customSyncId ? this.setSyncId(customSyncId) : this.syncId;
-      const safeKey = `laolingo_${targetId.replace(/[^A-Z0-9_-]/gi, '')}`;
-      const res = await fetch(`${KV_API_BASE}/GetValue/${KV_APP_KEY}/${safeKey}`);
+      const topic = this.getTopicName(targetId);
+      const res = await fetch(`${NTFY_BASE}/${topic}/json?poll=1&since=0`);
       if (!res.ok) return null;
-      const raw = await res.json();
-      if (!raw || typeof raw !== 'string') return null;
-      return decodeStateBase64(raw);
+      const text = await res.text();
+      if (!text || !text.trim()) return null;
+
+      const lines = text.trim().split('\n');
+      let combined = null;
+      for (const line of lines) {
+        try {
+          const item = JSON.parse(line);
+          if (item && item.event === 'message' && typeof item.message === 'string') {
+            const decoded = decodeStateBase64(item.message);
+            if (decoded) {
+              combined = combined ? mergeStates(combined, decoded) : decoded;
+            }
+          }
+        } catch (e) {}
+      }
+      return combined;
     } catch (e) {
       return null;
     }
   }
 
-  // Full bidirectional sync (Telegram Cloud + Cloud KV)
-  async syncAll(localState, customSyncId) {
+  // Subscribe to real-time live updates across devices (Telegram <-> Laptop)
+  subscribeLiveUpdates(onRemoteStateReceived) {
+    if (typeof window === 'undefined' || typeof EventSource === 'undefined') return () => {};
+
+    if (this.eventSource) {
+      try {
+        this.eventSource.close();
+      } catch (e) {}
+    }
+
+    const topic = this.getTopicName(this.syncId);
+    try {
+      const es = new EventSource(`${NTFY_BASE}/${topic}/sse`);
+      this.eventSource = es;
+
+      es.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data && data.event === 'message' && typeof data.message === 'string') {
+            const decoded = decodeStateBase64(data.message);
+            if (decoded && onRemoteStateReceived) {
+              onRemoteStateReceived(decoded);
+            }
+          }
+        } catch (e) {}
+      };
+    } catch (e) {}
+
+    return () => {
+      if (this.eventSource) {
+        try {
+          this.eventSource.close();
+        } catch (e) {}
+        this.eventSource = null;
+      }
+    };
+  }
+
+  // Full bidirectional sync (Telegram Cloud + ntfy Cloud)
+  async syncAll(localState, customSyncId, directEncodedData = null) {
     if (customSyncId) {
       this.setSyncId(customSyncId);
     }
-    const tgState = await this.loadFromTelegramCloud();
-    const kvState = await this.pullFromCloudKV();
 
-    let merged = mergeStates(localState, tgState);
+    let merged = localState;
+
+    if (directEncodedData) {
+      const directDecoded = decodeStateBase64(directEncodedData);
+      if (directDecoded) {
+        merged = mergeStates(merged, directDecoded);
+      }
+    }
+
+    const [tgState, kvState] = await Promise.all([
+      this.loadFromTelegramCloud(),
+      this.pullFromCloudKV(),
+    ]);
+
+    merged = mergeStates(merged, tgState);
     merged = mergeStates(merged, kvState);
     merged.updatedAt = Date.now();
 

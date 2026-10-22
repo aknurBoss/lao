@@ -102,9 +102,13 @@ export default function App() {
   });
 
   const isInitialMount = useRef(true);
+  const suppressNextPush = useRef(false);
 
-  const applyMergedState = (merged) => {
+  const applyMergedState = (merged, fromRemoteLive = false) => {
     if (!merged) return;
+    if (fromRemoteLive) {
+      suppressNextPush.current = true;
+    }
     if (typeof merged.xp === 'number') setXp(merged.xp);
     if (typeof merged.streak === 'number') setStreak(merged.streak);
     if (typeof merged.hearts === 'number') setHearts(merged.hearts);
@@ -150,16 +154,38 @@ export default function App() {
 
     const baseState = urlState ? mergeStates(currentSnapshot, urlState) : currentSnapshot;
     if (urlState) {
-      applyMergedState(baseState);
+      applyMergedState(baseState, true);
     }
 
     syncService.syncAll(baseState).then((remoteMerged) => {
       if (remoteMerged) {
-        applyMergedState(remoteMerged);
+        applyMergedState(remoteMerged, true);
       }
       isInitialMount.current = false;
     });
   }, []);
+
+  // Subscribe to real-time SSE updates for the active syncId
+  useEffect(() => {
+    const unsubscribe = syncService.subscribeLiveUpdates((remoteState) => {
+      const localSnapshot = {
+        xp: Number(localStorage.getItem('laolingo_xp') || 0),
+        streak: Number(localStorage.getItem('laolingo_streak') || 0),
+        hearts: Number(localStorage.getItem('laolingo_hearts') || 5),
+        gems: Number(localStorage.getItem('laolingo_gems') || 100),
+        streakFreezeActive: localStorage.getItem('laolingo_streak_freeze') === 'true',
+        completedLessons: JSON.parse(localStorage.getItem('laolingo_completed_lessons') || '[]'),
+        unlockedChests: JSON.parse(localStorage.getItem('laolingo_unlocked_chests') || '[]'),
+        learnedWords: JSON.parse(localStorage.getItem('laolingo_learned_words') || '[]'),
+        savedPhrases: JSON.parse(localStorage.getItem('laolingo_saved_phrases') || '[]'),
+        lang: localStorage.getItem('laolingo_lang') || 'ru',
+        updatedAt: Number(localStorage.getItem('laolingo_updated_at') || 0),
+      };
+      const merged = mergeStates(localSnapshot, remoteState);
+      applyMergedState(merged, true);
+    });
+    return () => unsubscribe();
+  }, [syncId]);
 
   // Save to localStorage and sync to Cloud whenever state updates
   useEffect(() => {
@@ -178,6 +204,10 @@ export default function App() {
     localStorage.setItem('laolingo_updated_at', now.toString());
 
     if (isInitialMount.current) return;
+    if (suppressNextPush.current) {
+      suppressNextPush.current = false;
+      return;
+    }
 
     const payload = {
       xp,
@@ -245,7 +275,7 @@ export default function App() {
     }
   };
 
-  const handleSyncWithCode = async (targetCode) => {
+  const handleSyncWithCode = async (targetCode, directData = null) => {
     const currentSnapshot = {
       xp,
       streak,
@@ -259,9 +289,9 @@ export default function App() {
       lang,
       updatedAt: Date.now(),
     };
-    const merged = await syncService.syncAll(currentSnapshot, targetCode);
+    const merged = await syncService.syncAll(currentSnapshot, targetCode, directData);
     setSyncId(syncService.getSyncId());
-    applyMergedState(merged);
+    applyMergedState(merged, true);
   };
 
   const currentStateForLink = {

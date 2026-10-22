@@ -87,16 +87,20 @@ export default function ProfileView({
     setSyncStatusMsg('');
     try {
       let cleanInput = inputCode.trim();
-      // If user pasted a full magic URL into the input box, extract ?sync= and ?data=
+      let directData = null;
+
+      // If user pasted a full magic URL into the input box, extract both ?sync= and ?data=
       if (cleanInput.includes('sync=') || cleanInput.includes('data=')) {
         try {
           const url = new URL(cleanInput);
           const codeFromUrl = url.searchParams.get('sync');
+          const dataFromUrl = url.searchParams.get('data');
           if (codeFromUrl) cleanInput = codeFromUrl;
+          if (dataFromUrl) directData = dataFromUrl;
         } catch (e) {}
       }
 
-      await onSyncWithCode(cleanInput || syncId);
+      await onSyncWithCode(cleanInput || syncId, directData);
       setInputCode('');
       setSyncStatusMsg(t.syncSuccess);
       telegramService.hapticNotification('success');
