@@ -1260,6 +1260,12 @@ export function getWordDisplay(word, lang = 'ru') {
       hint: word.enHint || word.pronunciationHint,
       literalText: word.enLiteral || word.literal,
       toneText: word.enTone || word.tone,
+      displayTrans: word.latTrans,
+      displayAltTrans: word.ruTrans,
+      displayMeaning: word.enMeaning || word.ruMeaning,
+      displayHint: word.enHint || word.pronunciationHint,
+      displayLiteral: word.enLiteral || word.literal,
+      displayTone: word.enTone || word.tone,
     };
   }
   return {
@@ -1270,5 +1276,11 @@ export function getWordDisplay(word, lang = 'ru') {
     hint: word.pronunciationHint,
     literalText: word.literal,
     toneText: word.tone,
+    displayTrans: word.ruTrans,
+    displayAltTrans: word.latTrans,
+    displayMeaning: word.ruMeaning,
+    displayHint: word.pronunciationHint,
+    displayLiteral: word.literal,
+    displayTone: word.tone,
   };
 }
